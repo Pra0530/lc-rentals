@@ -4,9 +4,8 @@ import { FLEET_DATA } from './FleetGrid';
 import { db, collection, doc, onSnapshot, setDoc, updateDoc, deleteDoc } from '../firebase';
 import { sendSMS } from '../services/smsService';
 
-export default function AdminPanel({ fleet, setFleet, onClose }) {
+export default function AdminPanel({ fleet, setFleet, bookings = [], pricingSettings = {}, onClose }) {
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [bookings, setBookings] = useState([]);
   
   // Real-time IoT Telemetry States
   const [telemetry, setTelemetry] = useState({});
@@ -43,15 +42,6 @@ export default function AdminPanel({ fleet, setFleet, onClose }) {
     notes: ''
   });
   const [inspectorSig, setInspectorSig] = useState('');
-
-  // Fetch bookings in real-time on mount (using onSnapshot standard real-time queries)
-  useEffect(() => {
-    const unsubscribeBookings = onSnapshot(collection(db, "bookings"), (snapshot) => {
-      const list = snapshot.docs.map(doc => ({ docId: doc.id, ...doc.data() }));
-      setBookings(list);
-    });
-    return () => unsubscribeBookings();
-  }, []);
 
   // Sydney routes for telemetry simulation
   const routesList = [
@@ -461,6 +451,217 @@ export default function AdminPanel({ fleet, setFleet, onClose }) {
   const maintenanceCount = fleet.filter(car => car.status === 'Maintenance').length;
   const occupancyRate = fleet.length > 0 ? Math.round((activeRentalsCount / fleet.length) * 100) : 0;
 
+  // Analytics Helper: Revenue Trend Chart (SVG Area)
+  const renderRevenueTrendChart = () => {
+    const today = new Date();
+    const last7Days = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(today.getDate() - i);
+      const dateString = d.toISOString().split('T')[0];
+      last7Days.push({
+        label: d.toLocaleDateString([], { month: 'short', day: 'numeric' }),
+        dateStr: dateString,
+        revenue: 0
+      });
+    }
+
+    // Populate data
+    bookings.forEach(b => {
+      if (b.status !== 'Cancelled' && b.createdAt) {
+        const bDateStr = b.createdAt.split('T')[0];
+        const match = last7Days.find(day => day.dateStr === bDateStr);
+        if (match) {
+          match.revenue += b.total;
+        }
+      }
+    });
+
+    const maxVal = Math.max(...last7Days.map(d => d.revenue), 500);
+    const height = 120;
+    const width = 450;
+    const padding = 20;
+
+    // Generate SVG points
+    const points = last7Days.map((d, index) => {
+      const x = padding + (index / (last7Days.length - 1)) * (width - padding * 2);
+      const y = height - padding - (d.revenue / maxVal) * (height - padding * 2);
+      return { x, y, val: d.revenue, label: d.label };
+    });
+
+    let pathD = '';
+    if (points.length > 0) {
+      pathD = `M ${points[0].x} ${points[0].y} ` + points.slice(1).map(p => `L ${p.x} ${p.y}`).join(' ');
+    }
+
+    const areaD = pathD ? `${pathD} L ${points[points.length - 1].x} ${height - padding} L ${points[0].x} ${height - padding} Z` : '';
+
+    return (
+      <div className="svg-chart-container" style={{ position: 'relative' }}>
+        <svg viewBox={`0 0 ${width} ${height}`} width="100%" height="100%" style={{ overflow: 'visible' }}>
+          <defs>
+            <linearGradient id="chart-area-glow" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#3acbe8" stopOpacity="0.4" />
+              <stop offset="100%" stopColor="#3acbe8" stopOpacity="0.0" />
+            </linearGradient>
+          </defs>
+
+          {/* Grid lines */}
+          <line x1={padding} y1={height - padding} x2={width - padding} y2={height - padding} stroke="#2a2a30" strokeWidth="1" />
+          <line x1={padding} y1={padding} x2={width - padding} y2={padding} stroke="#2a2a30" strokeWidth="1" strokeDasharray="4 4" />
+
+          {/* Area Path */}
+          {areaD && <path d={areaD} fill="url(#chart-area-glow)" />}
+          
+          {/* Stroke Path */}
+          {pathD && <path d={pathD} fill="none" stroke="#3acbe8" strokeWidth="2" style={{ filter: 'drop-shadow(0 0 3px rgba(58,203,232,0.5))' }} />}
+
+          {/* Dots */}
+          {points.map((p, idx) => (
+            <g key={idx} className="chart-dot-group">
+              <circle 
+                cx={p.x} 
+                cy={p.y} 
+                r="4" 
+                fill="#000" 
+                stroke="#3acbe8" 
+                strokeWidth="2" 
+                style={{ cursor: 'pointer' }}
+              />
+              <title>{p.label}: ${p.val.toLocaleString()} AUD</title>
+            </g>
+          ))}
+
+          {/* Labels */}
+          {points.map((p, idx) => {
+            if (idx === 0 || idx === points.length - 1 || idx === Math.floor(points.length / 2)) {
+              return (
+                <text 
+                  key={idx} 
+                  x={p.x} 
+                  y={height - 4} 
+                  fill="#8c8c93" 
+                  fontSize="9" 
+                  textAnchor="middle"
+                >
+                  {p.label}
+                </text>
+              );
+            }
+            return null;
+          })}
+        </svg>
+      </div>
+    );
+  };
+
+  // Analytics Helper: Fleet Status Split Chart (Horizontal Stacked Bar)
+  const renderFleetStatusSplitChart = () => {
+    const total = fleet.length || 1;
+    const maintenanceCount = fleet.filter(car => car.status === 'Maintenance').length;
+    const activeRentalsCount = bookings.filter(b => b.status === 'Active').length;
+    const availableCount = Math.max(0, fleet.length - activeRentalsCount - maintenanceCount);
+
+    const activePct = (activeRentalsCount / total) * 100;
+    const maintPct = (maintenanceCount / total) * 100;
+    const availPct = (availableCount / total) * 100;
+
+    return (
+      <div className="status-split-widget" style={{ padding: '0.5rem 0' }}>
+        <div style={{ display: 'flex', height: '24px', borderRadius: '4px', overflow: 'hidden', background: '#222', marginBottom: '1.25rem' }}>
+          {activeRentalsCount > 0 && (
+            <div 
+              style={{ width: `${activePct}%`, background: '#4caf50', transition: 'width 0.3s ease' }} 
+              title={`Active: ${activeRentalsCount} (${Math.round(activePct)}%)`}
+            />
+          )}
+          {availableCount > 0 && (
+            <div 
+              style={{ width: `${availPct}%`, background: '#3acbe8', transition: 'width 0.3s ease' }} 
+              title={`Available: ${availableCount} (${Math.round(availPct)}%)`}
+            />
+          )}
+          {maintenanceCount > 0 && (
+            <div 
+              style={{ width: `${maintPct}%`, background: '#ff4d4d', transition: 'width 0.3s ease' }} 
+              title={`Maintenance: ${maintenanceCount} (${Math.round(maintPct)}%)`}
+            />
+          )}
+        </div>
+
+        <div className="legend-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', fontSize: '0.85rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#4caf50' }}></span>
+            <span>Active: <strong>{activeRentalsCount}</strong></span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#3acbe8' }}></span>
+            <span>Available: <strong>{availableCount}</strong></span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#ff4d4d' }}></span>
+            <span>Maintenance: <strong>{maintenanceCount}</strong></span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#8c8c93' }}></span>
+            <span>Total Fleet: <strong>{fleet.length}</strong></span>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Analytics Helper: Car Revenue Performance (Horizontal Bars)
+  const renderCarPerformanceChart = () => {
+    const carRevMap = {};
+    fleet.forEach(car => {
+      carRevMap[car.name] = 0;
+    });
+
+    bookings.forEach(b => {
+      if (b.status !== 'Cancelled' && carRevMap[b.carName] !== undefined) {
+        carRevMap[b.carName] += b.total;
+      }
+    });
+
+    const sortedCars = Object.keys(carRevMap).map(name => ({
+      name,
+      revenue: carRevMap[name]
+    })).sort((a, b) => b.revenue - a.revenue).slice(0, 4);
+
+    const highestRev = Math.max(...sortedCars.map(c => c.revenue), 1);
+
+    return (
+      <div className="car-performance-widget" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+        {sortedCars.map((car, idx) => {
+          const percentage = (car.revenue / highestRev) * 100;
+          return (
+            <div key={idx} className="performance-row" style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                <span style={{ color: '#fff', fontWeight: '500' }}>{car.name}</span>
+                <span style={{ color: '#3acbe8', fontWeight: 'bold' }}>${car.revenue.toLocaleString()} AUD</span>
+              </div>
+              <div style={{ height: '8px', background: '#222', borderRadius: '4px', overflow: 'hidden' }}>
+                <div 
+                  style={{ 
+                    height: '100%', 
+                    width: `${percentage}%`, 
+                    background: 'linear-gradient(90deg, #104f55 0%, #3acbe8 100%)',
+                    borderRadius: '4px',
+                    transition: 'width 0.5s ease-out'
+                  }}
+                />
+              </div>
+            </div>
+          );
+        })}
+        {sortedCars.length === 0 && (
+          <p className="text-muted text-center font-small py-4">No vehicle performance data logged.</p>
+        )}
+      </div>
+    );
+  };
+
   // Open Inspection
   const triggerInspection = (booking, type) => {
     setActiveInspectionBooking(booking);
@@ -525,6 +726,12 @@ export default function AdminPanel({ fleet, setFleet, onClose }) {
             >
               <Car size={16} /> Fleet Manager ({fleet.length})
             </button>
+            <button 
+              className={`admin-nav-btn ${activeTab === 'pricing' ? 'nav-active' : ''}`}
+              onClick={() => setActiveTab('pricing')}
+            >
+              <DollarSign size={16} /> Pricing Rules
+            </button>
           </nav>
 
           <button onClick={onClose} className="btn btn-secondary admin-close-portal-btn">
@@ -566,6 +773,27 @@ export default function AdminPanel({ fleet, setFleet, onClose }) {
                   </div>
                   <span className="metric-value">{fleet.length} Listings</span>
                   <span className="metric-trend text-muted">{maintenanceCount} under maintenance</span>
+                </div>
+              </div>
+
+              {/* Visual Analytics Charts Section */}
+              <div className="dashboard-charts-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem', marginTop: '2rem' }}>
+                {/* Chart 1: Revenue Trend (SVG Area Chart) */}
+                <div className="glass-panel chart-card" style={{ padding: '1.5rem', textAlign: 'left' }}>
+                  <h3 className="widget-title" style={{ margin: '0 0 1rem 0', fontSize: '1.1rem', color: '#fff', borderBottom: '1px solid #222', paddingBottom: '0.5rem' }}>7-Day Revenue Trend</h3>
+                  {renderRevenueTrendChart()}
+                </div>
+
+                {/* Chart 2: Fleet Occupancy (Stacked Bar Gauge) */}
+                <div className="glass-panel chart-card" style={{ padding: '1.5rem', textAlign: 'left' }}>
+                  <h3 className="widget-title" style={{ margin: '0 0 1rem 0', fontSize: '1.1rem', color: '#fff', borderBottom: '1px solid #222', paddingBottom: '0.5rem' }}>Fleet Status Split</h3>
+                  {renderFleetStatusSplitChart()}
+                </div>
+
+                {/* Chart 3: Car Performance (Horizontal Bar Chart) */}
+                <div className="glass-panel chart-card" style={{ padding: '1.5rem', textAlign: 'left' }}>
+                  <h3 className="widget-title" style={{ margin: '0 0 1rem 0', fontSize: '1.1rem', color: '#fff', borderBottom: '1px solid #222', paddingBottom: '0.5rem' }}>Vehicle Revenue Performance</h3>
+                  {renderCarPerformanceChart()}
                 </div>
               </div>
 
@@ -1000,6 +1228,178 @@ export default function AdminPanel({ fleet, setFleet, onClose }) {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 4: PRICING RULES CONFIGURATION */}
+          {activeTab === 'pricing' && (
+            <div className="admin-tab-content animate-slide-up text-left">
+              <h2 className="admin-content-title">Dynamic Pricing Configuration</h2>
+              
+              <div className="glass-panel pricing-config-card" style={{ padding: '2rem', maxWidth: '650px', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                <p className="font-small text-muted" style={{ margin: 0 }}>
+                  Manage the rules and parameters for automatic demand pricing calculations. Changes save to Firestore and update checkout ledgers instantly.
+                </p>
+
+                <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '1rem', marginBottom: '1rem' }}>
+                  <input 
+                    type="checkbox" 
+                    id="dynamic-pricing-toggle" 
+                    checked={pricingSettings.dynamicPricingEnabled !== false}
+                    onChange={async (e) => {
+                      try {
+                        await updateDoc(doc(db, "settings", "pricing"), {
+                          dynamicPricingEnabled: e.target.checked
+                        });
+                      } catch (err) {
+                        console.error("Error saving dynamic pricing state:", err);
+                      }
+                    }}
+                    style={{ width: '20px', height: '20px', cursor: 'pointer' }}
+                  />
+                  <label htmlFor="dynamic-pricing-toggle" style={{ fontSize: '1.05rem', fontWeight: 'bold', color: '#fff', cursor: 'pointer', margin: 0 }}>
+                    Enable Dynamic Pricing Engine
+                  </label>
+                </div>
+
+                <div className="pricing-sliders-stack" style={{ display: 'flex', flexDirection: 'column', gap: '2rem', opacity: pricingSettings.dynamicPricingEnabled !== false ? 1 : 0.4, pointerEvents: pricingSettings.dynamicPricingEnabled !== false ? 'auto' : 'none', transition: 'all 0.3s ease' }}>
+                  
+                  {/* Slider 1: Weekend Surge multiplier */}
+                  <div className="config-slider-group" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <label className="form-label font-bold" style={{ margin: 0 }}>Weekend Surcharge Multiplier</label>
+                      <strong className="text-cyan">{Math.round(((pricingSettings.weekendMultiplier || 1.15) - 1) * 100)}% Surge</strong>
+                    </div>
+                    <input 
+                      type="range" 
+                      min="1.00" 
+                      max="1.50" 
+                      step="0.05"
+                      value={pricingSettings.weekendMultiplier || 1.15} 
+                      onChange={async (e) => {
+                        try {
+                          await updateDoc(doc(db, "settings", "pricing"), {
+                            weekendMultiplier: parseFloat(e.target.value)
+                          });
+                        } catch (err) {
+                          console.error("Error saving weekend surge:", err);
+                        }
+                      }}
+                      className="form-slider w-full"
+                      style={{ cursor: 'pointer' }}
+                    />
+                    <p className="font-tiny text-muted" style={{ margin: 0 }}>Applied to daily base rates for Saturday and Sunday booking dates.</p>
+                  </div>
+
+                  {/* Slider 2: Utilization Surcharge threshold 1 */}
+                  <div className="config-slider-group" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <label className="form-label font-bold" style={{ margin: 0 }}>High Demand Surcharge (Tier 1)</label>
+                      <strong className="text-cyan">+{Math.round((pricingSettings.utilizationSurcharge1 || 0.10) * 100)}% Fee</strong>
+                    </div>
+                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                      <span className="font-tiny text-muted" style={{ minWidth: '105px' }}>Active Occupancy ≥</span>
+                      <input 
+                        type="range" 
+                        min="0.30" 
+                        max="0.65" 
+                        step="0.05"
+                        value={pricingSettings.utilizationThreshold1 || 0.50} 
+                        onChange={async (e) => {
+                          try {
+                            await updateDoc(doc(db, "settings", "pricing"), {
+                              utilizationThreshold1: parseFloat(e.target.value)
+                            });
+                          } catch (err) {
+                            console.error("Error saving tier 1 threshold:", err);
+                          }
+                        }}
+                        className="form-slider"
+                        style={{ flex: 1, cursor: 'pointer' }}
+                      />
+                      <strong style={{ minWidth: '45px', textAlign: 'right' }}>{Math.round((pricingSettings.utilizationThreshold1 || 0.50) * 100)}%</strong>
+                    </div>
+                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                      <span className="font-tiny text-muted" style={{ minWidth: '105px' }}>Surcharge Rate:</span>
+                      <input 
+                        type="range" 
+                        min="0.05" 
+                        max="0.20" 
+                        step="0.01"
+                        value={pricingSettings.utilizationSurcharge1 || 0.10} 
+                        onChange={async (e) => {
+                          try {
+                            await updateDoc(doc(db, "settings", "pricing"), {
+                              utilizationSurcharge1: parseFloat(e.target.value)
+                            });
+                          } catch (err) {
+                            console.error("Error saving tier 1 surcharge:", err);
+                          }
+                        }}
+                        className="form-slider"
+                        style={{ flex: 1, cursor: 'pointer' }}
+                      />
+                      <strong style={{ minWidth: '45px', textAlign: 'right' }}>+{Math.round((pricingSettings.utilizationSurcharge1 || 0.10) * 100)}%</strong>
+                    </div>
+                    <p className="font-tiny text-muted" style={{ margin: 0 }}>Triggers when total active rentals reach this threshold percentage of the active fleet.</p>
+                  </div>
+
+                  {/* Slider 3: Utilization Surcharge threshold 2 */}
+                  <div className="config-slider-group" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <label className="form-label font-bold" style={{ margin: 0 }}>Peak Demand Surcharge (Tier 2)</label>
+                      <strong className="text-cyan">+{Math.round((pricingSettings.utilizationSurcharge2 || 0.25) * 100)}% Fee</strong>
+                    </div>
+                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                      <span className="font-tiny text-muted" style={{ minWidth: '105px' }}>Active Occupancy ≥</span>
+                      <input 
+                        type="range" 
+                        min="0.70" 
+                        max="0.95" 
+                        step="0.05"
+                        value={pricingSettings.utilizationThreshold2 || 0.75} 
+                        onChange={async (e) => {
+                          try {
+                            await updateDoc(doc(db, "settings", "pricing"), {
+                              utilizationThreshold2: parseFloat(e.target.value)
+                            });
+                          } catch (err) {
+                            console.error("Error saving tier 2 threshold:", err);
+                          }
+                        }}
+                        className="form-slider"
+                        style={{ flex: 1, cursor: 'pointer' }}
+                      />
+                      <strong style={{ minWidth: '45px', textAlign: 'right' }}>{Math.round((pricingSettings.utilizationThreshold2 || 0.75) * 100)}%</strong>
+                    </div>
+                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                      <span className="font-tiny text-muted" style={{ minWidth: '105px' }}>Surcharge Rate:</span>
+                      <input 
+                        type="range" 
+                        min="0.20" 
+                        max="0.50" 
+                        step="0.05"
+                        value={pricingSettings.utilizationSurcharge2 || 0.25} 
+                        onChange={async (e) => {
+                          try {
+                            await updateDoc(doc(db, "settings", "pricing"), {
+                              utilizationSurcharge2: parseFloat(e.target.value)
+                            });
+                          } catch (err) {
+                            console.error("Error saving tier 2 surcharge:", err);
+                          }
+                        }}
+                        className="form-slider"
+                        style={{ flex: 1, cursor: 'pointer' }}
+                      />
+                      <strong style={{ minWidth: '45px', textAlign: 'right' }}>+{Math.round((pricingSettings.utilizationSurcharge2 || 0.25) * 100)}%</strong>
+                    </div>
+                    <p className="font-tiny text-muted" style={{ margin: 0 }}>Triggers when total active rentals reach this maximum peak threshold percentage of the active fleet.</p>
+                  </div>
+
+                </div>
+
               </div>
             </div>
           )}

@@ -4,6 +4,7 @@ import { db, collection, addDoc } from '../firebase';
 import { jsPDF } from 'jspdf';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardNumberElement, CardExpiryElement, CardCvcElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import { calculateDynamicPrice } from '../utils/pricingCalculator';
 
 // Initialize Stripe promise only if publishable key is present and configured
 const stripePublishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
@@ -33,7 +34,7 @@ const stripeElementOptions = {
   }
 };
 
-function CheckoutPortalInner({ car, user, isOpen, onClose, onBookingSuccess }) {
+function CheckoutPortalInner({ car, user, isOpen, onClose, onBookingSuccess, fleet = [], bookings = [], pricingSettings = {} }) {
   const [useInsurance, setUseInsurance] = useState(true);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [signature, setSignature] = useState('');
@@ -80,7 +81,19 @@ function CheckoutPortalInner({ car, user, isOpen, onClose, onBookingSuccess }) {
 
   if (!isOpen || !car) return null;
 
-  const basePrice = car.price * days;
+  const activeRentalsCount = bookings.filter(b => b.status === 'Active').length;
+  const totalFleetCount = fleet.filter(c => c.status !== 'Maintenance').length;
+
+  const dynamicPricing = calculateDynamicPrice(
+    car.price,
+    startDate,
+    endDate,
+    activeRentalsCount,
+    totalFleetCount,
+    pricingSettings
+  );
+
+  const basePrice = dynamicPricing.basePrice;
   const insurancePrice = useInsurance ? 50 * days : 0;
   const subtotal = basePrice + insurancePrice;
   const gst = Math.round(subtotal * 0.1); // GST in Australia is 10%
@@ -138,6 +151,8 @@ function CheckoutPortalInner({ car, user, isOpen, onClose, onBookingSuccess }) {
           body: JSON.stringify({
             carId: car.id,
             days,
+            startDate,
+            endDate,
             useInsurance,
             renterName: paymentData.cardName || (user ? user.name : 'Valued Renter')
           })
@@ -432,6 +447,21 @@ function CheckoutPortalInner({ car, user, isOpen, onClose, onBookingSuccess }) {
                   <span>Duration</span>
                   <span>{days} day{days > 1 ? 's' : ''}</span>
                 </div>
+
+                {dynamicPricing.weekendDays > 0 && (
+                  <div className="ledger-row dynamic-pricing-info font-tiny text-muted">
+                    <span>Weekend Days ({dynamicPricing.weekendDays}d)</span>
+                    <span className="text-cyan">+{Math.round(((pricingSettings.weekendMultiplier || 1.15) - 1) * 100)}% surge applied</span>
+                  </div>
+                )}
+
+                {dynamicPricing.utilizationSurchargeMultiplier > 0 && (
+                  <div className="ledger-row dynamic-pricing-info font-tiny text-muted animate-pulse">
+                    <span>🔥 High Demand Surcharge</span>
+                    <span className="text-cyan">+{Math.round(dynamicPricing.utilizationSurchargeMultiplier * 100)}% ({activeRentalsCount}/{totalFleetCount} active)</span>
+                  </div>
+                )}
+
                 <div className="ledger-row border-top-thin">
                   <span>Base Booking Cost</span>
                   <span>${basePrice.toLocaleString()} AUD</span>

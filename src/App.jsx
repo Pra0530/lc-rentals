@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Navbar from './components/Navbar';
 import Hero from './components/Hero';
 import FleetGrid, { FLEET_DATA } from './components/FleetGrid';
@@ -39,6 +39,24 @@ export default function App() {
 
   // Live Fleet state loaded from Cloud Firestore
   const [fleet, setFleet] = useState([]);
+  
+  // Lifted bookings list
+  const [bookings, setBookings] = useState([]);
+
+  // Pricing rules settings
+  const [pricingSettings, setPricingSettings] = useState({
+    dynamicPricingEnabled: true,
+    weekendMultiplier: 1.15,
+    utilizationThreshold1: 0.50,
+    utilizationSurcharge1: 0.10,
+    utilizationThreshold2: 0.75,
+    utilizationSurcharge2: 0.25,
+    categoryMultipliers: {
+      Supercar: 1.0,
+      EV: 1.0,
+      'Luxury SUV': 1.0
+    }
+  });
 
   // SMS Simulator Toast State
   const [activeSmsToast, setActiveSmsToast] = useState(null);
@@ -59,7 +77,7 @@ export default function App() {
     };
   }, []);
 
-  // Initialize fleet and user session on mount using Firebase listeners
+  // Initialize fleet, user session, bookings, and pricing settings on mount
   useEffect(() => {
     // 1. Initialise user session via Auth state changes
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
@@ -90,51 +108,75 @@ export default function App() {
       }
     });
 
+    // 3. Initialise bookings real-time sync
+    const unsubscribeBookings = onSnapshot(collection(db, "bookings"), (snapshot) => {
+      const list = snapshot.docs.map(d => ({ docId: d.id, id: d.id, ...d.data() }));
+      setBookings(list);
+    });
+
+    // 4. Initialise pricing settings real-time sync
+    const unsubscribePricing = onSnapshot(doc(db, "settings", "pricing"), (docSnap) => {
+      if (docSnap.exists()) {
+        setPricingSettings(docSnap.data());
+      } else {
+        // Seed default pricing settings in Firestore
+        setDoc(doc(db, "settings", "pricing"), {
+          dynamicPricingEnabled: true,
+          weekendMultiplier: 1.15,
+          utilizationThreshold1: 0.50,
+          utilizationSurcharge1: 0.10,
+          utilizationThreshold2: 0.75,
+          utilizationSurcharge2: 0.25,
+          categoryMultipliers: {
+            Supercar: 1.0,
+            EV: 1.0,
+            'Luxury SUV': 1.0
+          }
+        });
+      }
+    });
+
     return () => {
       unsubscribeAuth();
       unsubscribeFleet();
+      unsubscribeBookings();
+      unsubscribePricing();
     };
   }, []);
 
   // Live listener to booking status transitions for browser push notifications
+  const prevStatusesRef = useRef({});
+
   useEffect(() => {
-    if (!activeUser) return;
-    
-    // Store previous statuses in a ref to check for transitions
-    const prevStatuses = {};
+    if (!activeUser || bookings.length === 0) return;
 
-    const unsubscribe = onSnapshot(collection(db, "bookings"), (snapshot) => {
-      snapshot.docs.forEach((doc) => {
-        const booking = doc.data();
-        if (booking.userId === activeUser.uid) {
-          const bookingId = doc.id;
-          const currentStatus = booking.status;
-          const oldStatus = prevStatuses[bookingId];
+    bookings.forEach((booking) => {
+      if (booking.userId === activeUser.uid) {
+        const bookingId = booking.id || booking.docId;
+        const currentStatus = booking.status;
+        const oldStatus = prevStatusesRef.current[bookingId];
 
-          if (oldStatus && oldStatus !== currentStatus) {
-            // Status changed! Trigger native push notification
-            let title = "Booking Status Update";
-            let body = `Your booking for ${booking.carName} is now ${currentStatus}.`;
-            if (currentStatus === 'Confirmed') {
-              title = "Booking Confirmed! 🎉";
-              body = `Your luxury experience with the ${booking.carName} has been approved.`;
-            } else if (currentStatus === 'Active') {
-              title = "Rental Active! 🏎️";
-              body = `Enjoy your drive in the ${booking.carName}. Telematics are live.`;
-            } else if (currentStatus === 'Completed') {
-              title = "Rental Completed";
-              body = `Thank you for choosing LC Rentals. Return complete.`;
-            }
-
-            sendNativeNotification(title, body);
+        if (oldStatus && oldStatus !== currentStatus) {
+          // Status changed! Trigger native push notification
+          let title = "Booking Status Update";
+          let body = `Your booking for ${booking.carName} is now ${currentStatus}.`;
+          if (currentStatus === 'Confirmed') {
+            title = "Booking Confirmed! 🎉";
+            body = `Your luxury experience with the ${booking.carName} has been approved.`;
+          } else if (currentStatus === 'Active') {
+            title = "Rental Active! 🏎️";
+            body = `Enjoy your drive in the ${booking.carName}. Telematics are live.`;
+          } else if (currentStatus === 'Completed') {
+            title = "Rental Completed";
+            body = `Thank you for choosing LC Rentals. Return complete.`;
           }
-          prevStatuses[bookingId] = currentStatus;
-        }
-      });
-    });
 
-    return () => unsubscribe();
-  }, [activeUser]);
+          sendNativeNotification(title, body);
+        }
+        prevStatusesRef.current[bookingId] = currentStatus;
+      }
+    });
+  }, [bookings, activeUser]);
 
   const handleSearchFilter = (filterType) => {
     setActiveFilter(filterType);
@@ -203,6 +245,8 @@ export default function App() {
         <AdminPanel 
           fleet={fleet} 
           setFleet={setFleet} 
+          bookings={bookings}
+          pricingSettings={pricingSettings}
           onClose={() => setIsAdminOpen(false)} 
         />
       </div>
@@ -216,6 +260,7 @@ export default function App() {
         <GaragePortal 
           user={activeUser}
           fleet={fleet}
+          pricingSettings={pricingSettings}
           onClose={() => setIsGarageOpen(false)}
         />
       </div>
@@ -277,6 +322,9 @@ export default function App() {
         car={checkoutCar}
         user={activeUser}
         isOpen={isCheckoutOpen}
+        fleet={fleet}
+        bookings={bookings}
+        pricingSettings={pricingSettings}
         onClose={() => {
           setIsCheckoutOpen(false);
           setCheckoutCar(null);

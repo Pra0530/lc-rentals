@@ -5,6 +5,7 @@ import {
   Sparkles, RefreshCw, Volume2, VolumeX, ShieldAlert, Calendar
 } from 'lucide-react';
 import { db, collection, onSnapshot, doc, updateDoc } from '../firebase';
+import { calculateDynamicPrice } from '../utils/pricingCalculator';
 
 // Helper to interpolate coordinate paths (same as AdminPanel)
 const interpolateRoute = (route, steps = 150) => {
@@ -67,7 +68,7 @@ const STREETS = [
   "Centennial Park Scenic Cruise"
 ];
 
-export default function GaragePortal({ user, fleet, onClose }) {
+export default function GaragePortal({ user, fleet, pricingSettings = {}, onClose }) {
   const [bookings, setBookings] = useState([]);
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [activeTab, setActiveTab] = useState('keys'); // 'keys' or 'logs'
@@ -446,16 +447,28 @@ export default function GaragePortal({ user, fleet, onClose }) {
       return;
     }
 
+    const activeRentalsCount = bookings.filter(b => b.status === 'Active').length;
+    const totalFleetCount = fleet.filter(c => c.status !== 'Maintenance').length;
+
     const matchedCar = fleet.find(c => c.id === selectedBooking.carId);
     const dailyPrice = matchedCar ? matchedCar.price : selectedBooking.basePrice / selectedBooking.days;
-    
-    const base = dailyPrice * diffDays;
+
+    const dynamicPricing = calculateDynamicPrice(
+      dailyPrice,
+      selectedBooking.endDate,
+      dateVal,
+      activeRentalsCount,
+      totalFleetCount,
+      pricingSettings
+    );
+
+    const base = dynamicPricing.basePrice;
     const cover = selectedBooking.insurancePrice > 0 ? 50 * diffDays : 0;
     const subtotal = base + cover;
     const gst = Math.round(subtotal * 0.1);
     const total = subtotal + gst;
 
-    setExtensionCosts({ base, cover, gst, total, days: diffDays });
+    setExtensionCosts({ base, cover, gst, total, days: diffDays, dynamicPricing });
   };
 
   // Save Booking Extension in Firestore
@@ -946,6 +959,20 @@ export default function GaragePortal({ user, fleet, onClose }) {
                       <span>Daily rate ({selectedBooking.carName})</span>
                       <span>${selectedBooking.basePrice / selectedBooking.days} AUD</span>
                     </div>
+
+                    {extensionCosts.dynamicPricing?.weekendDays > 0 && (
+                      <div className="ledger-row font-tiny text-muted">
+                        <span>Weekend Days ({extensionCosts.dynamicPricing.weekendDays}d)</span>
+                        <span className="text-cyan">+{Math.round(((pricingSettings.weekendMultiplier || 1.15) - 1) * 100)}% surge applied</span>
+                      </div>
+                    )}
+
+                    {extensionCosts.dynamicPricing?.utilizationSurchargeMultiplier > 0 && (
+                      <div className="ledger-row font-tiny text-muted animate-pulse">
+                        <span>🔥 High Demand Surcharge</span>
+                        <span className="text-cyan">+{Math.round(extensionCosts.dynamicPricing.utilizationSurchargeMultiplier * 100)}% applied</span>
+                      </div>
+                    )}
 
                     <div className="ledger-row font-tiny">
                       <span>Base Extension Charge</span>
