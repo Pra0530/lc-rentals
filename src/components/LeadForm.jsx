@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Send, Check } from 'lucide-react';
 import { FLEET_DATA } from './FleetGrid';
+import { db, collection, addDoc } from '../firebase';
 
 export default function LeadForm({ selectedCar, setSelectedCar }) {
   const [formData, setFormData] = useState({
@@ -16,6 +17,40 @@ export default function LeadForm({ selectedCar, setSelectedCar }) {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [inquiryDetails, setInquiryDetails] = useState(null);
 
+  // Leaflet Map Initialization for pickup location
+  useEffect(() => {
+    const L = window.L;
+    if (!L) return;
+
+    const mapContainer = document.getElementById("pickup-location-map");
+    if (!mapContainer || mapContainer._leaflet_id) return;
+
+    // Sydney Airport (SYD) coordinates: -33.9461, 151.1772
+    const map = L.map("pickup-location-map", {
+      center: [-33.9461, 151.1772],
+      zoom: 14,
+      scrollWheelZoom: false
+    });
+
+    // Dark styled OSM tile layer
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+    }).addTo(map);
+
+    const marker = L.marker([-33.9461, 151.1772]).addTo(map);
+    marker.bindPopup(`
+      <div style="font-family: inherit; color: #fff; text-align: left; padding: 4px;">
+        <strong style="color: #3acbe8; font-size: 0.95rem;">LC Rentals SYD Concierge</strong><br/>
+        Sydney Airport Terminal 1 & 2<br/>
+        <span style="font-size: 0.75rem; color: #aaa;">24/7 Handover Suite</span>
+      </div>
+    `).openPopup();
+
+    return () => {
+      map.remove();
+    };
+  }, [isSubmitted]);
+
   // Sync selected car from fleet grid clicks
   useEffect(() => {
     if (selectedCar) {
@@ -28,7 +63,7 @@ export default function LeadForm({ selectedCar, setSelectedCar }) {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
     const chosenCar = FLEET_DATA.find(car => car.id === formData.carId) || { name: 'Any Available Vehicle', price: 0 };
@@ -49,15 +84,19 @@ export default function LeadForm({ selectedCar, setSelectedCar }) {
       ...formData,
       carName: chosenCar.name,
       days,
-      totalEstimate
+      totalEstimate,
+      status: 'Pending', // New inquiries start as Pending
+      createdAt: new Date().toISOString()
     };
 
-    setInquiryDetails(details);
-    setIsSubmitted(true);
-
-    // Save locally to simulate backend recording
-    const existingInquiries = JSON.parse(localStorage.getItem('inquiries') || '[]');
-    localStorage.setItem('inquiries', JSON.stringify([...existingInquiries, details]));
+    try {
+      await addDoc(collection(db, "inquiries"), details);
+      setInquiryDetails(details);
+      setIsSubmitted(true);
+    } catch (err) {
+      console.error("Error submitting inquiry to Firestore:", err);
+      alert("Failed to submit your inquiry. Please try again.");
+    }
   };
 
   const handleReset = () => {
@@ -109,6 +148,7 @@ export default function LeadForm({ selectedCar, setSelectedCar }) {
                 </div>
               </div>
             </div>
+            <div id="pickup-location-map" className="pickup-map-container" style={{ marginTop: '2rem' }}></div>
           </div>
 
           <div className="form-card glass-panel animate-slide-up">

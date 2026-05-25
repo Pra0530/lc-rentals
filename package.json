@@ -11,9 +11,14 @@
     "deploy:firebase": "npm run build && npx -y firebase-tools@latest deploy --only hosting"
   },
   "dependencies": {
+    "@stripe/react-stripe-js": "^6.4.0",
+    "@stripe/stripe-js": "^9.6.0",
+    "firebase": "^11.3.0",
+    "jspdf": "^2.5.2",
     "lucide-react": "^1.16.0",
     "react": "^19.2.6",
-    "react-dom": "^19.2.6"
+    "react-dom": "^19.2.6",
+    "stripe": "^22.1.1"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

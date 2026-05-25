@@ -11,6 +11,9 @@ import AuthModal from './components/AuthModal';
 import CheckoutPortal from './components/CheckoutPortal';
 import AdminPanel from './components/AdminPanel';
 
+// Firebase Integrations
+import { auth, db, onAuthStateChanged, signOut, collection, doc, onSnapshot, setDoc } from './firebase';
+
 export default function App() {
   const [activeFilter, setActiveFilter] = useState('All');
   const [selectedCarForInquiry, setSelectedCarForInquiry] = useState(null);
@@ -31,25 +34,61 @@ export default function App() {
   // Admin View state
   const [isAdminOpen, setIsAdminOpen] = useState(false);
 
-  // Live Fleet state loaded from localStorage
+  // Live Fleet state loaded from Cloud Firestore
   const [fleet, setFleet] = useState([]);
 
-  // Initialize fleet and user session on mount
-  useEffect(() => {
-    // 1. Initialise user session
-    const savedUser = localStorage.getItem('active_user');
-    if (savedUser) {
-      setActiveUser(JSON.parse(savedUser));
-    }
+  // SMS Simulator Toast State
+  const [activeSmsToast, setActiveSmsToast] = useState(null);
 
-    // 2. Initialise fleet database
-    const savedFleet = localStorage.getItem('lc_fleet');
-    if (savedFleet) {
-      setFleet(JSON.parse(savedFleet));
-    } else {
-      localStorage.setItem('lc_fleet', JSON.stringify(FLEET_DATA));
-      setFleet(FLEET_DATA);
-    }
+  useEffect(() => {
+    const handleSmsEvent = (e) => {
+      setActiveSmsToast(e.detail);
+      // Auto-dismiss after 6 seconds
+      const timer = setTimeout(() => {
+        setActiveSmsToast(null);
+      }, 6000);
+      return () => clearTimeout(timer);
+    };
+
+    window.addEventListener("lc_sms_received", handleSmsEvent);
+    return () => {
+      window.removeEventListener("lc_sms_received", handleSmsEvent);
+    };
+  }, []);
+
+  // Initialize fleet and user session on mount using Firebase listeners
+  useEffect(() => {
+    // 1. Initialise user session via Auth state changes
+    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        setActiveUser({
+          uid: user.uid,
+          name: user.displayName || user.email.split('@')[0],
+          email: user.email,
+          phone: user.phoneNumber || ''
+        });
+      } else {
+        setActiveUser(null);
+      }
+    });
+
+    // 2. Initialise fleet database real-time sync (standard queries/real-time listener)
+    const unsubscribeFleet = onSnapshot(collection(db, "fleet"), (snapshot) => {
+      if (snapshot.empty) {
+        // Seed default database when Firestore is empty
+        FLEET_DATA.forEach(async (car) => {
+          await setDoc(doc(db, "fleet", car.id), car);
+        });
+      } else {
+        const fleetList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setFleet(fleetList);
+      }
+    });
+
+    return () => {
+      unsubscribeAuth();
+      unsubscribeFleet();
+    };
   }, []);
 
   const handleSearchFilter = (filterType) => {
@@ -78,8 +117,7 @@ export default function App() {
 
   // Auth triggers
   const handleAuthSuccess = (userData) => {
-    setActiveUser(userData);
-    
+    // State is automatically synced by the onAuthStateChanged listener
     if (queuedCheckoutCar) {
       setCheckoutCar(queuedCheckoutCar);
       setIsCheckoutOpen(true);
@@ -87,9 +125,12 @@ export default function App() {
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('active_user');
-    setActiveUser(null);
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+    } catch (err) {
+      console.error("Error signing out:", err);
+    }
   };
 
   // Rent/Checkout triggers
@@ -104,10 +145,7 @@ export default function App() {
   };
 
   const handleBookingSuccess = (bookingDetails) => {
-    const savedUser = localStorage.getItem('active_user');
-    if (savedUser) {
-      setActiveUser(JSON.parse(savedUser));
-    }
+    console.log("Booking processed successfully in Firestore:", bookingDetails);
   };
 
   // Filter out cars under maintenance from appearing on the Landing Page Catalog
@@ -186,6 +224,23 @@ export default function App() {
         }}
         onBookingSuccess={handleBookingSuccess}
       />
+
+      {/* Visual iOS-style SMS Toast Notification Simulator */}
+      {activeSmsToast && (
+        <div className="sms-toast-simulator animate-slide-in">
+          <div className="sms-toast-header">
+            <span className="sms-toast-icon">💬</span>
+            <div className="sms-toast-title">
+              <strong>MESSAGES</strong>
+              <span className="sms-toast-time">now</span>
+            </div>
+            <button className="sms-toast-close" onClick={() => setActiveSmsToast(null)}>×</button>
+          </div>
+          <div className="sms-toast-body">
+            <strong>LC Concierge ({activeSmsToast.to}):</strong> {activeSmsToast.body}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

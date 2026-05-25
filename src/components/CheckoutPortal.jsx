@@ -1,7 +1,39 @@
 import React, { useState, useEffect } from 'react';
 import { ShieldCheck, ArrowLeft, CreditCard, Sparkles, Download, CheckCircle2 } from 'lucide-react';
+import { db, collection, addDoc } from '../firebase';
+import { jsPDF } from 'jspdf';
+import { loadStripe } from '@stripe/stripe-js';
+import { Elements, CardNumberElement, CardExpiryElement, CardCvcElement, useStripe, useElements } from '@stripe/react-stripe-js';
 
-export default function CheckoutPortal({ car, user, isOpen, onClose, onBookingSuccess }) {
+// Initialize Stripe promise only if publishable key is present and configured
+const stripePublishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
+const isStripeConfigured = !!(
+  stripePublishableKey &&
+  stripePublishableKey !== 'your-publishable-key-here' &&
+  stripePublishableKey.trim() !== ''
+);
+
+const stripePromise = isStripeConfigured ? loadStripe(stripePublishableKey) : null;
+
+const stripeElementOptions = {
+  style: {
+    base: {
+      color: '#F1F1F4',
+      fontFamily: 'Outfit, Inter, sans-serif',
+      fontSize: '15px',
+      '::placeholder': {
+        color: '#8c8c93'
+      },
+      iconColor: '#3acbe8'
+    },
+    invalid: {
+      color: '#ff4d4d',
+      iconColor: '#ff4d4d'
+    }
+  }
+};
+
+function CheckoutPortalInner({ car, user, isOpen, onClose, onBookingSuccess }) {
   const [useInsurance, setUseInsurance] = useState(true);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [signature, setSignature] = useState('');
@@ -29,6 +61,9 @@ export default function CheckoutPortal({ car, user, isOpen, onClose, onBookingSu
   const [isProcessing, setIsProcessing] = useState(false);
   const [isDone, setIsDone] = useState(false);
   const [bookingDetails, setBookingDetails] = useState(null);
+
+  const stripe = isStripeConfigured ? useStripe() : null;
+  const elements = isStripeConfigured ? useElements() : null;
 
   // Price calculations
   const [days, setDays] = useState(3);
@@ -77,7 +112,7 @@ export default function CheckoutPortal({ car, user, isOpen, onClose, onBookingSu
     setPaymentData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handlePay = (e) => {
+  const handlePay = async (e) => {
     e.preventDefault();
     if (!agreedToTerms || !signature) {
       alert('Please read and sign the rental agreement before payment.');
@@ -86,51 +121,246 @@ export default function CheckoutPortal({ car, user, isOpen, onClose, onBookingSu
 
     setIsProcessing(true);
 
-    // Simulate payment transaction
-    setTimeout(() => {
-      setIsProcessing(false);
-      setIsDone(true);
-      
-      const referenceNumber = 'LC-' + Math.floor(100000 + Math.random() * 900000);
-      const details = {
-        referenceNumber,
-        carName: car.name,
-        carCategory: car.category,
-        days,
-        startDate,
-        endDate,
-        basePrice,
-        insurancePrice,
-        gst,
-        total,
-        depositHold,
-        renterName: paymentData.cardName || (user ? user.name : 'Valued Renter'),
-        signature
-      };
-      
-      setBookingDetails(details);
+    if (isStripeConfigured) {
+      if (!stripe || !elements) {
+        alert('Stripe payment elements are loading. Please try again in a moment.');
+        setIsProcessing(false);
+        return;
+      }
 
-      // Save booking in registered user history in localStorage
-      const users = JSON.parse(localStorage.getItem('registered_users') || '[]');
-      const activeUser = JSON.parse(localStorage.getItem('active_user'));
-      
-      if (activeUser) {
-        const updatedUsers = users.map(u => {
-          if (u.email.toLowerCase() === activeUser.email.toLowerCase()) {
-            return {
-              ...u,
-              bookings: [...(u.bookings || []), details]
-            };
-          }
-          return u;
+      try {
+        // 1. Request a PaymentIntent Client Secret from the serverless API
+        const response = await fetch('/api/create-payment-intent', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            carId: car.id,
+            days,
+            useInsurance,
+            renterName: paymentData.cardName || (user ? user.name : 'Valued Renter')
+          })
         });
-        localStorage.setItem('registered_users', JSON.stringify(updatedUsers));
+
+        if (!response.ok) {
+          const errData = await response.json();
+          throw new Error(errData.error || 'Failed to initialize payment gateway.');
+        }
+
+        const { clientSecret } = await response.json();
+
+        // 2. Complete payment directly with Stripe SDK
+        const result = await stripe.confirmCardPayment(clientSecret, {
+          payment_method: {
+            card: elements.getElement(CardNumberElement),
+            billing_details: {
+              name: paymentData.cardName || (user ? user.name : 'Valued Renter'),
+              address: {
+                postal_code: paymentData.postcode
+              }
+            }
+          }
+        });
+
+        if (result.error) {
+          throw new Error(result.error.message);
+        }
+
+        if (result.paymentIntent.status === 'succeeded') {
+          // 3. Save booking details to Firestore on success
+          const referenceNumber = 'LC-' + Math.floor(100000 + Math.random() * 900000);
+          const details = {
+            referenceNumber,
+            carId: car.id,
+            carName: car.name,
+            carCategory: car.category,
+            days,
+            startDate,
+            endDate,
+            basePrice,
+            insurancePrice,
+            gst,
+            total,
+            depositHold,
+            renterName: paymentData.cardName || (user ? user.name : 'Valued Renter'),
+            signature,
+            userId: user ? user.uid : 'anonymous',
+            userEmail: user ? user.email : 'anonymous',
+            status: 'Pending', // New bookings start as Pending for admin review
+            stripePaymentIntentId: result.paymentIntent.id,
+            createdAt: new Date().toISOString()
+          };
+
+          await addDoc(collection(db, "bookings"), details);
+          setBookingDetails(details);
+          setIsProcessing(false);
+          setIsDone(true);
+          
+          if (onBookingSuccess) {
+            onBookingSuccess(details);
+          }
+        } else {
+          throw new Error('Authorized charge failed. Payment status: ' + result.paymentIntent.status);
+        }
+      } catch (err) {
+        console.error("Stripe payment processing failed:", err);
+        alert(err.message || "Failed to process card payment. Please double-check details.");
+        setIsProcessing(false);
       }
-      
-      if (onBookingSuccess) {
-        onBookingSuccess(details);
-      }
-    }, 2500);
+    } else {
+      // Legacy Mock Simulation Mode
+      setTimeout(async () => {
+        const referenceNumber = 'LC-' + Math.floor(100000 + Math.random() * 900000);
+        const details = {
+          referenceNumber,
+          carId: car.id,
+          carName: car.name,
+          carCategory: car.category,
+          days,
+          startDate,
+          endDate,
+          basePrice,
+          insurancePrice,
+          gst,
+          total,
+          depositHold,
+          renterName: paymentData.cardName || (user ? user.name : 'Valued Renter'),
+          signature,
+          userId: user ? user.uid : 'anonymous',
+          userEmail: user ? user.email : 'anonymous',
+          status: 'Pending',
+          createdAt: new Date().toISOString()
+        };
+        
+        try {
+          await addDoc(collection(db, "bookings"), details);
+          setBookingDetails(details);
+          setIsProcessing(false);
+          setIsDone(true);
+          
+          if (onBookingSuccess) {
+            onBookingSuccess(details);
+          }
+        } catch (err) {
+          console.error("Error creating booking in Firestore:", err);
+          setIsProcessing(false);
+          alert("Failed to secure your booking. Please try again.");
+        }
+      }, 2500);
+    }
+  };
+
+  const downloadInvoicePDF = () => {
+    if (!bookingDetails) return;
+    
+    const doc = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4'
+    });
+
+    // Dark charcoal background header
+    doc.setFillColor(20, 20, 20);
+    doc.rect(0, 0, 210, 50, 'F');
+
+    // LC Rentals Logo / Branding in Cyan
+    doc.setTextColor(58, 203, 232); // Cyan color
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(26);
+    doc.text("L C   R E N T A L S", 20, 30);
+    
+    doc.setTextColor(150, 150, 150);
+    doc.setFontSize(10);
+    doc.text("L U X U R Y  &  E X O T I C  C A R S", 20, 38);
+
+    // Secure Invoice Badge
+    doc.setFillColor(58, 203, 232);
+    doc.rect(140, 20, 50, 10, 'F');
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(9);
+    doc.text("SECURE INVOICE", 146, 26);
+
+    // Bill To details
+    doc.setTextColor(40, 40, 40);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.text("BILL TO:", 20, 70);
+    
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.text(`Renter: ${bookingDetails.renterName}`, 20, 78);
+    doc.text(`Email: ${bookingDetails.userEmail || 'Valued Customer'}`, 20, 84);
+    doc.text(`Sign-off Name: ${bookingDetails.signature}`, 20, 90);
+
+    // Invoice Meta details
+    doc.setFont("helvetica", "bold");
+    doc.text("INVOICE DETAILS:", 120, 70);
+    
+    doc.setFont("helvetica", "normal");
+    doc.text(`Ref Number: ${bookingDetails.referenceNumber}`, 120, 78);
+    doc.text(`Date Issued: ${new Date().toLocaleDateString()}`, 120, 84);
+    doc.text(`Billing Currency: AUD ($)`, 120, 90);
+
+    // Itemized table header
+    doc.setFillColor(240, 240, 240);
+    doc.rect(20, 105, 170, 8, 'F');
+    doc.setFont("helvetica", "bold");
+    doc.text("Description", 25, 110);
+    doc.text("Duration", 105, 110);
+    doc.text("Total Price", 155, 110);
+
+    // Itemized lines
+    doc.setFont("helvetica", "normal");
+    doc.text(`${bookingDetails.carName} (${bookingDetails.carCategory})`, 25, 122);
+    doc.text(`${bookingDetails.days} day(s)`, 105, 122);
+    doc.text(`$${bookingDetails.basePrice.toLocaleString()} AUD`, 155, 122);
+
+    let yPos = 130;
+    if (bookingDetails.insurancePrice > 0) {
+      doc.text("Excess Reduction Cover ($50/day)", 25, yPos);
+      doc.text(`${bookingDetails.days} day(s)`, 105, yPos);
+      doc.text(`$${bookingDetails.insurancePrice.toLocaleString()} AUD`, 155, yPos);
+      yPos += 8;
+    }
+
+    doc.text("GST (10%)", 25, yPos);
+    doc.text("-", 105, yPos);
+    doc.text(`$${bookingDetails.gst.toLocaleString()} AUD`, 155, yPos);
+    yPos += 12;
+
+    // Grand Total
+    doc.setDrawColor(200, 200, 200);
+    doc.line(20, yPos - 6, 190, yPos - 6);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+    doc.text("Grand Total (Paid):", 95, yPos);
+    doc.setTextColor(58, 203, 232);
+    doc.text(`$${bookingDetails.total.toLocaleString()} AUD`, 150, yPos);
+
+    // Security deposit hold details
+    doc.setTextColor(100, 100, 100);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.text(`* Refundable Security Deposit hold: $${bookingDetails.depositHold} AUD is authorized on card.`, 20, yPos + 12);
+
+    // Digital signature block
+    doc.setDrawColor(58, 203, 232);
+    doc.line(20, 220, 90, 220);
+    doc.text("Renter Digital Signature", 20, 225);
+    doc.setFont("courier", "italic");
+    doc.setFontSize(12);
+    doc.text(`// ${bookingDetails.signature} //`, 25, 215);
+
+    // Terms footer
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(150, 150, 150);
+    doc.text("Thank you for choosing LC Rentals. Live elite, drive exotics.", 20, 260);
+    doc.text("For customer roadside support or billing inquiries: concierge@lcrentals.com.au", 20, 265);
+
+    // Save PDF file
+    doc.save(`LC-Rentals-Invoice-${bookingDetails.referenceNumber}.pdf`);
   };
 
   return (
@@ -294,39 +524,61 @@ export default function CheckoutPortal({ car, user, isOpen, onClose, onBookingSu
                   <div className="checkout-section-block">
                     <h3 className="section-block-title">2. Card Information</h3>
                     <div className="stripe-card-group">
-                      <div className="card-input-wrapper">
-                        <CreditCard size={18} className="card-input-icon" />
-                        <input 
-                          type="text"
-                          name="cardNumber"
-                          required
-                          placeholder="Card Number"
-                          className="card-field-input"
-                          value={paymentData.cardNumber}
-                          onChange={handleCardInputChange}
-                        />
-                      </div>
-                      
-                      <div className="card-input-subfields">
-                        <input 
-                          type="text"
-                          name="cardExpiry"
-                          required
-                          placeholder="MM/YY"
-                          className="card-subfield-input"
-                          value={paymentData.cardExpiry}
-                          onChange={handleCardInputChange}
-                        />
-                        <input 
-                          type="text"
-                          name="cardCvc"
-                          required
-                          placeholder="CVC"
-                          className="card-subfield-input border-left-thin"
-                          value={paymentData.cardCvc}
-                          onChange={handleCardInputChange}
-                        />
-                      </div>
+                      {isStripeConfigured ? (
+                        <>
+                          <div className="card-input-wrapper">
+                            <CreditCard size={18} className="card-input-icon" />
+                            <div className="card-field-input-stripe">
+                              <CardNumberElement options={stripeElementOptions} />
+                            </div>
+                          </div>
+                          
+                          <div className="card-input-subfields">
+                            <div className="card-subfield-input-stripe">
+                              <CardExpiryElement options={stripeElementOptions} />
+                            </div>
+                            <div className="card-subfield-input-stripe border-left-thin">
+                              <CardCvcElement options={stripeElementOptions} />
+                            </div>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="card-input-wrapper">
+                            <CreditCard size={18} className="card-input-icon" />
+                            <input 
+                              type="text"
+                              name="cardNumber"
+                              required
+                              placeholder="Card Number"
+                              className="card-field-input"
+                              value={paymentData.cardNumber}
+                              onChange={handleCardInputChange}
+                            />
+                          </div>
+                          
+                          <div className="card-input-subfields">
+                            <input 
+                              type="text"
+                              name="cardExpiry"
+                              required
+                              placeholder="MM/YY"
+                              className="card-subfield-input"
+                              value={paymentData.cardExpiry}
+                              onChange={handleCardInputChange}
+                            />
+                            <input 
+                              type="text"
+                              name="cardCvc"
+                              required
+                              placeholder="CVC"
+                              className="card-subfield-input border-left-thin"
+                              value={paymentData.cardCvc}
+                              onChange={handleCardInputChange}
+                            />
+                          </div>
+                        </>
+                      )}
                     </div>
 
                     <div className="form-row margin-top-small">
@@ -362,8 +614,14 @@ export default function CheckoutPortal({ car, user, isOpen, onClose, onBookingSu
                   </button>
 
                   <p className="payment-security-notice">
-                    🔒 Payments are processed using 256-bit encryption. Local secure transaction powered by simulated Stripe engine.
+                    🔒 Payments are processed using 256-bit encryption. {isStripeConfigured ? 'Transaction secured by Stripe.' : 'Local secure transaction powered by simulated Stripe engine.'}
                   </p>
+                  
+                  {!isStripeConfigured && (
+                    <p className="demo-mode-notice">
+                      ⚡ Demo Mode: Using local payment simulator (Stripe keys not configured)
+                    </p>
+                  )}
                 </form>
               )}
             </div>
@@ -427,9 +685,7 @@ export default function CheckoutPortal({ car, user, isOpen, onClose, onBookingSu
 
           <div className="success-actions">
             <button 
-              onClick={() => {
-                alert("Simulating Invoice PDF download. Invoice file generated successfully.");
-              }} 
+              onClick={downloadInvoicePDF} 
               className="btn btn-secondary"
             >
               <Download size={16} /> Download Invoice
@@ -443,4 +699,17 @@ export default function CheckoutPortal({ car, user, isOpen, onClose, onBookingSu
 
     </div>
   );
+}
+
+export default function CheckoutPortal(props) {
+  if (!props.isOpen || !props.car) return null;
+
+  if (isStripeConfigured) {
+    return (
+      <Elements stripe={stripePromise}>
+        <CheckoutPortalInner {...props} />
+      </Elements>
+    );
+  }
+  return <CheckoutPortalInner {...props} />;
 }

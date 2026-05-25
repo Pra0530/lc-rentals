@@ -133,3 +133,24 @@ This project contains a `netlify.toml` configuring the public directory `dist`, 
    ```bash
    netlify deploy --prod
    ```
+
+---
+
+## 🔧 Environment Configurations & Hybrid Architecture
+
+This project features a conditional hybrid adapter architecture:
+1. **Real-Cloud Integration:** When you supply your Firebase project credentials in `.env.local` (or via Vercel/Netlify dashboard environment variables), the portal connects to Cloud Firestore and Firebase Authentication.
+2. **Local Simulation Fallback Mode:** If environment variables are missing or placeholders, the app automatically switches to Local Simulation Mode. It remains fully functional by substituting `localStorage` caches for authentication and database collections, allowing you to test all premium features offline:
+   * Google Social Login / Custom Credentials Auth
+   * Real-time Fleet inventory management (adding, toggling maintenance, modifying rates)
+   * Stripe AUD checkout portal and PDF invoice downloads
+   * Leaflet interactive maps and active fleet GPS satellite tracking widgets
+   * Concierge SMS alerts with visual mock toast overlays on-screen
+
+### Setup variables:
+1. Copy the environment template:
+   ```bash
+   cp .env.example .env.local
+   ```
+2. Replace the placeholders in `.env.local` with your Firebase web configuration and Twilio keys (optional).
+

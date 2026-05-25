@@ -1,26 +1,26 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap');
 
 :root {
-  --bg-primary: 0 0% 4%; /* #0a0a0a */
-  --bg-secondary: 0 0% 8%; /* #141414 */
-  --bg-tertiary: 0 0% 12%; /* #1f1f1f */
+  --bg-primary: 0 0% 0%; /* pure black #000000 */
+  --bg-secondary: 240 6% 6%; /* deep carbon #0e0e11 */
+  --bg-tertiary: 240 6% 10%; /* dark charcoal #17171d */
   
-  --text-primary: 0 0% 100%;
-  --text-secondary: 220 9% 70%;
-  --text-muted: 220 9% 50%;
+  --text-primary: 240 10% 96%; /* off-white #f1f1f4 */
+  --text-secondary: 240 6% 75%; /* cool gray */
+  --text-muted: 240 5% 55%;
   
-  --accent: 43 78% 54%; /* gold #d4af37 */
-  --accent-hover: 45 88% 58%;
-  --accent-rgb: 229, 169, 60;
+  --accent: 191 80% 54%; /* cyan #3ACBE8 */
+  --accent-hover: 191 90% 58%;
+  --accent-rgb: 58, 203, 232;
   
-  --border-color: 0 0% 100% / 8%;
-  --border-glow: 43 78% 54% / 15%;
+  --border-color: 240 10% 96% / 8%;
+  --border-glow: 191 80% 54% / 15%;
   
   --font-heading: 'Outfit', sans-serif;
   --font-body: 'Inter', sans-serif;
   
-  --glass-bg: 0 0% 100% / 3%;
-  --glass-border: 0 0% 100% / 8%;
+  --glass-bg: 240 10% 96% / 3%;
+  --glass-border: 240 10% 96% / 8%;
   --glass-blur: 16px;
   
   --transition-smooth: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -285,6 +285,18 @@ dialog[open]::backdrop {
   }
 }
 
+@media (max-width: 576px) {
+  .container {
+    padding: 0 1.25rem;
+  }
+}
+
+@media (max-width: 380px) {
+  .container {
+    padding: 0 1rem;
+  }
+}
+
 /* Navbar Custom CSS */
 .navbar-container {
   position: fixed;
@@ -434,9 +446,7 @@ dialog[open]::backdrop {
   display: flex;
   align-items: center;
   justify-content: center;
-  background-image: url('/mclaren.png');
-  background-size: cover;
-  background-position: center;
+  background: #000;
   padding-top: 80px;
   overflow: hidden;
 }
@@ -449,7 +459,7 @@ dialog[open]::backdrop {
   height: 100%;
   background: radial-gradient(circle at center, transparent 20%, hsl(var(--bg-primary)) 90%),
               linear-gradient(to bottom, transparent 60%, hsl(var(--bg-primary)) 100%),
-              rgba(0, 0, 0, 0.45);
+              rgba(0, 0, 0, 0.15);
   z-index: 1;
 }
 
@@ -577,15 +587,19 @@ dialog[open]::backdrop {
   100% { opacity: 0; transform: translate(-50%, 15px); }
 }
 
-@media (max-width: 992px) {
+@media (max-width: 1150px) {
   .hero-title {
-    font-size: 3.5rem;
+    font-size: 3.8rem;
+  }
+  .hero-subtitle {
+    font-size: 1.15rem;
+    margin-bottom: 2.5rem;
   }
   .search-widget {
     grid-template-columns: 1fr 1fr;
-    border-radius: 24px;
     gap: 1.5rem;
     padding: 2rem;
+    border-radius: 24px;
   }
   .border-left {
     border-left: none;
@@ -597,16 +611,41 @@ dialog[open]::backdrop {
   }
 }
 
-@media (max-width: 576px) {
+@media (max-width: 768px) {
   .hero-title {
-    font-size: 2.8rem;
+    font-size: 2.6rem;
+    margin-bottom: 1rem;
+  }
+  .hero-subtitle {
+    font-size: 1.05rem;
+    margin-bottom: 2rem;
   }
   .search-widget {
     grid-template-columns: 1fr;
-    padding: 1.5rem;
+    gap: 1.25rem;
+    padding: 1.25rem;
+    border-radius: 16px;
   }
   .widget-button {
     grid-column: span 1;
+  }
+}
+
+@media (max-height: 850px) {
+  .hero-title {
+    font-size: 3.2rem;
+    margin-bottom: 0.75rem;
+  }
+  .hero-subtitle {
+    font-size: 1.1rem;
+    margin-bottom: 2rem;
+    max-width: 550px;
+  }
+  .hero-content {
+    margin-top: 0.5rem;
+  }
+  .hero-section {
+    padding-top: 60px;
   }
 }
 
@@ -645,6 +684,13 @@ dialog[open]::backdrop {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: 2rem;
+}
+
+@media (max-width: 480px) {
+  .fleet-grid {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.25rem;
+  }
 }
 .car-card {
   overflow: hidden;
@@ -1889,6 +1935,27 @@ dialog[open]::backdrop {
   border-left: 1px solid hsla(var(--glass-border));
 }
 
+.card-field-input-stripe {
+  width: 100%;
+  padding: 0.9rem 1rem 0.9rem 2.8rem;
+  box-sizing: border-box;
+}
+
+.card-subfield-input-stripe {
+  width: 100%;
+  padding: 0.9rem 1rem;
+  box-sizing: border-box;
+}
+
+.demo-mode-notice {
+  font-size: 0.75rem;
+  color: hsl(var(--accent));
+  text-align: center;
+  margin-top: 0.5rem;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+}
+
 .btn-checkout-submit {
   width: 100%;
   padding: 1.1rem;
@@ -2518,5 +2585,436 @@ dialog[open]::backdrop {
   .admin-nav {
     flex-wrap: wrap;
     justify-content: center;
+  }
+}
+
+/* ==========================================
+   🔑 Phase 5 & 6 Custom Integrations
+   ========================================== */
+
+/* 1. Google Social Sign-In & Dividers */
+.auth-social-divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: 0.5rem 0;
+  color: hsl(var(--text-muted));
+  font-size: 0.8rem;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+}
+.auth-social-divider::before,
+.auth-social-divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid hsla(var(--glass-border));
+}
+.auth-social-divider:not(:empty)::before {
+  margin-right: .75em;
+}
+.auth-social-divider:not(:empty)::after {
+  margin-left: .75em;
+}
+
+.google-signin-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: hsla(var(--glass-bg)) !important;
+  border: 1px solid hsla(var(--glass-border)) !important;
+  color: #fff !important;
+  padding: 0.85rem !important;
+  font-size: 0.95rem !important;
+  font-weight: 600 !important;
+  width: 100% !important;
+  border-radius: 8px !important;
+  cursor: pointer !important;
+  transition: var(--transition-smooth) !important;
+}
+.google-signin-btn:hover {
+  background: hsla(var(--text-primary) / 6%) !important;
+  border-color: hsl(var(--accent) / 50%) !important;
+  box-shadow: 0 0 15px hsla(var(--accent) / 10%);
+}
+.google-icon-svg {
+  flex-shrink: 0;
+}
+
+/* 2. Visual iOS-style SMS Toast Notification Simulator */
+.sms-toast-simulator {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  width: 360px;
+  background: rgba(22, 22, 22, 0.85);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 1rem 1.25rem;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+  z-index: 9999;
+  text-align: left;
+}
+.sms-toast-header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding-bottom: 0.4rem;
+}
+.sms-toast-icon {
+  font-size: 1.1rem;
+}
+.sms-toast-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-grow: 1;
+}
+.sms-toast-title strong {
+  font-size: 0.75rem;
+  color: #a0a0a0;
+  letter-spacing: 0.1em;
+  font-family: var(--font-heading);
+}
+.sms-toast-time {
+  font-size: 0.7rem;
+  color: #666;
+}
+.sms-toast-close {
+  background: transparent;
+  border: none;
+  color: #888;
+  font-size: 1.1rem;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0 2px;
+}
+.sms-toast-close:hover {
+  color: #fff;
+}
+.sms-toast-body {
+  font-size: 0.88rem;
+  line-height: 1.4;
+  color: #eee;
+  font-family: var(--font-body);
+}
+
+/* Animations */
+@keyframes slideIn {
+  from {
+    transform: translateY(-20px) scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+.animate-slide-in {
+  animation: slideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* 3. Leaflet Dark-Mode Tile Filter */
+.pickup-map-container,
+.gps-map-container {
+  width: 100%;
+  border: 1px solid hsla(var(--glass-border));
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+  background: #111;
+  z-index: 10;
+}
+.pickup-map-container {
+  height: 280px;
+}
+.gps-map-container {
+  height: 320px;
+}
+.leaflet-tile-container img {
+  /* Invert map tiles and adjust hue to render as a dark theme */
+  filter: invert(100%) hue-rotate(180deg) brightness(85%) contrast(90%) !important;
+}
+.leaflet-bar a {
+  background-color: #1a1a1a !important;
+  color: #fff !important;
+  border-bottom: 1px solid #333 !important;
+}
+.leaflet-bar a:hover {
+  background-color: hsl(var(--accent)) !important;
+  color: #000 !important;
+}
+.leaflet-popup-content-wrapper {
+  background: #1a1a1a !important;
+  color: #fff !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 8px !important;
+}
+.leaflet-popup-tip {
+  background: #1a1a1a !important;
+}
+.leaflet-container {
+  font-family: var(--font-body) !important;
+}
+
+/* Live GPS Simulator Console styles */
+.gps-console-widget {
+  margin-top: 2rem;
+  text-align: left;
+}
+.gps-widget-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+.gps-legend {
+  display: flex;
+  gap: 1.5rem;
+  font-size: 0.8rem;
+}
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.dot-green {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #4caf50;
+  box-shadow: 0 0 8px #4caf50;
+}
+.dot-gold {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: hsl(var(--accent));
+  box-shadow: 0 0 8px hsl(var(--accent));
+}
+
+/* Live Telemetry HUD Split Console styling */
+.gps-widget-split {
+  display: grid;
+  grid-template-columns: 1.8fr 1.2fr;
+  gap: 1.5rem;
+  width: 100%;
+}
+
+.telemetry-hud-sidebar {
+  display: flex;
+  flex-direction: column;
+  background: hsla(var(--bg-secondary) / 80%);
+  border: 1px solid hsla(var(--glass-border));
+  border-radius: 12px;
+  overflow: hidden;
+  height: 320px;
+}
+
+.telemetry-sidebar-header {
+  font-family: var(--font-heading);
+  font-size: 0.95rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: hsl(var(--accent));
+  padding: 0.8rem 1rem;
+  background: hsla(var(--bg-tertiary) / 90%);
+  border-bottom: 1px solid hsla(var(--glass-border));
+  margin: 0;
+  text-align: left;
+}
+
+.telemetry-list-container {
+  overflow-y: auto;
+  flex-grow: 1;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.telemetry-row-card {
+  background: hsla(var(--bg-tertiary) / 40%);
+  border: 1px solid hsla(var(--glass-border));
+  border-radius: 8px;
+  padding: 0.8rem;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  text-align: left;
+}
+
+.telemetry-row-card:hover {
+  border-color: hsla(var(--accent) / 30%);
+  background: hsla(var(--bg-tertiary) / 70%);
+}
+
+.telemetry-selected {
+  border-color: hsl(var(--accent)) !important;
+  background: hsla(var(--bg-tertiary) / 90%) !important;
+  box-shadow: 0 0 15px hsla(var(--accent) / 8%);
+}
+
+.telemetry-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.telemetry-car-name {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: #fff;
+}
+
+.telemetry-status-pill {
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  padding: 0.15rem 0.5rem;
+  border-radius: 100px;
+  background: rgba(76, 175, 80, 0.15);
+  color: #4caf50;
+  border: 1px solid rgba(76, 175, 80, 0.3);
+}
+
+.telemetry-status-pill.status-low-range-alert {
+  background: rgba(244, 67, 54, 0.15);
+  color: #f44336;
+  border: 1px solid rgba(244, 67, 54, 0.3);
+  animation: pulse-red 1.5s infinite;
+}
+
+.telemetry-status-pill.status-high-speed-limit-warning {
+  background: rgba(255, 152, 0, 0.15);
+  color: #ff9800;
+  border: 1px solid rgba(255, 152, 0, 0.3);
+}
+
+@keyframes pulse-red {
+  0% { opacity: 0.8; }
+  50% { opacity: 1; }
+  100% { opacity: 0.8; }
+}
+
+.telemetry-card-renter {
+  font-size: 0.75rem;
+  color: hsl(var(--text-secondary));
+}
+
+.telemetry-card-metrics {
+  display: flex;
+  gap: 1rem;
+  margin-top: 0.2rem;
+}
+
+.metric-pill {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  font-size: 0.7rem;
+}
+
+.metric-pill-label {
+  color: hsl(var(--text-muted));
+}
+
+.metric-pill-value {
+  color: #fff;
+  font-weight: 600;
+}
+
+.telemetry-progress-wrap {
+  width: 100%;
+  height: 4px;
+  background: hsla(var(--glass-border));
+  border-radius: 100px;
+  overflow: hidden;
+  margin-top: 0.2rem;
+}
+
+.telemetry-progress-bar {
+  height: 100%;
+  border-radius: 100px;
+  transition: width 1s linear;
+}
+
+.telemetry-progress-bar.bg-ev {
+  background: #3acbe8;
+}
+
+.telemetry-progress-bar.bg-gas {
+  background: #4caf50;
+}
+
+.telemetry-progress-bar.bg-low {
+  background: #f44336 !important;
+}
+
+.telemetry-details-expanded {
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px dashed hsla(var(--glass-border));
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.diagnostics-header {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: hsl(var(--text-muted));
+  letter-spacing: 0.05em;
+}
+
+.tire-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.3rem 0.6rem;
+}
+
+.tire-item {
+  font-family: monospace;
+  font-size: 0.7rem;
+  color: #4caf50;
+}
+
+.diagnostics-street {
+  font-size: 0.7rem;
+  color: hsl(var(--text-secondary));
+}
+
+.diagnostics-street span {
+  color: #fff;
+  font-weight: 500;
+}
+
+.telemetry-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: hsl(var(--text-muted));
+  text-align: center;
+  padding: 2rem 1rem;
+  font-size: 0.8rem;
+  gap: 0.4rem;
+}
+
+@media (max-width: 992px) {
+  .gps-widget-split {
+    grid-template-columns: 1fr;
+  }
+  .telemetry-hud-sidebar {
+    height: 250px;
   }
 }
