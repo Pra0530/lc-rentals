@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Menu, X, User, LogOut, FileText, ShieldAlert } from 'lucide-react';
+import { Menu, X, User, LogOut, FileText, ShieldAlert, Car } from 'lucide-react';
 
-export default function Navbar({ user, onAuthTrigger, onLogout, onAdminTrigger }) {
+export default function Navbar({ user, onAuthTrigger, onLogout, onAdminTrigger, onGarageTrigger }) {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
@@ -70,6 +70,16 @@ export default function Navbar({ user, onAuthTrigger, onLogout, onAdminTrigger }
                     className="dropdown-item" 
                     onClick={() => {
                       setShowProfileDropdown(false);
+                      onGarageTrigger();
+                    }}
+                  >
+                    <Car size={14} className="text-cyan" /> My Garage
+                  </button>
+
+                  <button 
+                    className="dropdown-item" 
+                    onClick={() => {
+                      setShowProfileDropdown(false);
                       scrollToSection('booking-form');
                     }}
                   >
@@ -124,6 +134,9 @@ export default function Navbar({ user, onAuthTrigger, onLogout, onAdminTrigger }
           {user ? (
             <>
               <li className="mobile-user-profile-label">Logged in as {user.name}</li>
+              <li onClick={() => { setIsMobileMenuOpen(false); onGarageTrigger(); }}>
+                <span className="flex-align-icon text-cyan"><Car size={18} /> My Garage</span>
+              </li>
               <li onClick={() => { setIsMobileMenuOpen(false); onAdminTrigger(); }}>
                 <span className="flex-align-icon text-gold"><ShieldAlert size={18} /> Admin Console</span>
               </li>

@@ -3018,3 +3018,668 @@ dialog[open]::backdrop {
     height: 250px;
   }
 }
+
+/* ==========================================================================
+   📱 Phase 10: Dedicated Customer Portal ("My Garage") Styling
+   ========================================================================== */
+
+.customer-garage-container {
+  max-width: 1400px !important;
+}
+
+.customer-garage-header {
+  border-bottom: 1px solid hsla(var(--glass-border));
+}
+
+.garage-logo-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: hsla(var(--accent-glow));
+  color: hsl(var(--accent));
+  box-shadow: 0 0 15px hsla(var(--accent) / 25%);
+}
+
+.customer-header-profile {
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
+}
+
+.sound-toggle-btn {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: hsla(var(--glass-bg));
+  border: 1px solid hsla(var(--glass-border));
+  transition: var(--transition-smooth);
+}
+
+.sound-toggle-btn:hover {
+  border-color: hsl(var(--accent));
+  background: hsla(var(--accent) / 10%);
+}
+
+.user-info-plate {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.customer-garage-split {
+  height: calc(100vh - 120px) !important;
+}
+
+.customer-garage-sidebar {
+  border-right: 1px solid hsla(var(--glass-border));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.sidebar-tab-navigation {
+  display: flex;
+  border-bottom: 1px solid hsla(var(--glass-border));
+  background: hsla(var(--bg-secondary) / 40%);
+}
+
+.sidebar-tab-btn {
+  flex: 1;
+  padding: 0.9rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  background: transparent;
+  border: none;
+  color: hsl(var(--text-muted));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+}
+
+.sidebar-tab-btn:hover {
+  color: #fff;
+}
+
+.sidebar-tab-btn.tab-active {
+  color: hsl(var(--accent));
+  border-bottom: 2px solid hsl(var(--accent));
+  background: hsla(var(--accent) / 5%);
+}
+
+.sidebar-items-list-wrap {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.garage-vehicle-item-card {
+  padding: 1rem;
+  border-radius: 8px;
+  border: 1px solid hsla(var(--glass-border));
+  background: hsla(var(--bg-secondary) / 40%);
+  cursor: pointer;
+  transition: var(--transition-smooth);
+}
+
+.garage-vehicle-item-card:hover {
+  border-color: hsla(var(--glass-border-hover));
+  transform: translateY(-2px);
+  background: hsla(var(--bg-secondary) / 70%);
+}
+
+.garage-vehicle-item-card.card-selected {
+  border-color: hsl(var(--accent));
+  background: hsla(var(--accent) / 5%);
+  box-shadow: 0 0 10px hsla(var(--accent) / 10%);
+}
+
+.item-header-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.4rem;
+}
+
+.customer-garage-main-view {
+  overflow-y: auto;
+  padding: 1.5rem;
+}
+
+.garage-overview-billboard {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+  border-radius: 12px;
+}
+
+.billboard-meta-badge {
+  letter-spacing: 0.1em;
+  margin-bottom: 0.3rem;
+}
+
+.billboard-action-buttons {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.status-badge-lg {
+  padding: 0.5rem 1rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  border-radius: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.status-badge-lg.status-active {
+  background: hsla(174, 100%, 29%, 15%);
+  color: #3acbe8;
+  border: 1px solid hsla(174, 100%, 29%, 40%);
+}
+
+.status-badge-lg.status-confirmed {
+  background: hsla(122, 39%, 49%, 15%);
+  color: #4caf50;
+  border: 1px solid hsla(122, 39%, 49%, 40%);
+}
+
+.status-badge-lg.status-pending {
+  background: hsla(35, 100%, 50%, 15%);
+  color: #ff9800;
+  border: 1px solid hsla(35, 100%, 50%, 40%);
+}
+
+.status-badge-lg.status-completed {
+  background: hsla(0, 0%, 50%, 15%);
+  color: #bbb;
+  border: 1px solid hsla(0, 0%, 50%, 40%);
+}
+
+.btn-extension-trigger {
+  padding: 0.5rem 1rem !important;
+  font-size: 0.8rem !important;
+}
+
+.garage-active-console-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: 1.5rem;
+}
+
+/* Smart Key Fob widget */
+.smart-key-fob-widget {
+  padding: 1.2rem;
+  border-radius: 12px;
+}
+
+.fob-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.key-visual-badge-card {
+  padding: 1.2rem;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #090909 0%, #151515 100%);
+  border: 1px solid hsla(var(--glass-border));
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 180px;
+  box-shadow: 0 10px 20px rgba(0,0,0,0.4);
+  transition: var(--transition-smooth);
+}
+
+.key-visual-badge-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 50%;
+  background: linear-gradient(to bottom, rgba(255,255,255,0.03) 0%, transparent 100%);
+  border-radius: 12px 12px 0 0;
+  pointer-events: none;
+}
+
+.key-visual-badge-card.badge-locked {
+  border-color: hsla(0, 0%, 30%, 30%);
+}
+
+.key-visual-badge-card.badge-unlocked {
+  border-color: hsla(174, 100%, 29%, 40%);
+  box-shadow: 0 10px 20px rgba(0,0,0,0.4), 0 0 25px hsla(var(--accent) / 5%);
+}
+
+.key-visual-badge-card.ignition-active {
+  border-color: hsl(var(--accent));
+  box-shadow: 0 10px 20px rgba(0,0,0,0.4), 0 0 35px hsla(var(--accent) / 12%);
+  animation: vibration 0.15s infinite linear;
+}
+
+@keyframes vibration {
+  0% { transform: translate(0, 0) rotate(0deg); }
+  25% { transform: translate(0.5px, 0.5px) rotate(0.1deg); }
+  50% { transform: translate(-0.5px, 0) rotate(-0.1deg); }
+  75% { transform: translate(0, -0.5px) rotate(0deg); }
+  100% { transform: translate(0, 0) rotate(0deg); }
+}
+
+.card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: #fff;
+  font-size: 0.8rem;
+}
+
+.card-middle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.indicator-symbol {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lock-text {
+  font-size: 0.65rem;
+  letter-spacing: 1.5px;
+  color: hsl(var(--text-muted));
+}
+
+.card-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+.smart-fob-controls-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.8rem;
+}
+
+.btn-fob-key {
+  padding: 0.8rem;
+  background: hsla(var(--glass-bg));
+  border: 1px solid hsla(var(--glass-border));
+  border-radius: 8px;
+  color: hsl(var(--text-secondary));
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  font-family: var(--font-body);
+  font-weight: 500;
+  transition: var(--transition-smooth);
+}
+
+.btn-fob-key:hover {
+  background: hsla(var(--glass-border-hover));
+  color: #fff;
+  border-color: hsla(var(--glass-border-hover));
+}
+
+.btn-fob-key.btn-fob-active {
+  color: hsl(var(--accent));
+  border-color: hsl(var(--accent));
+  background: hsla(var(--accent) / 5%);
+}
+
+.btn-fob-key.btn-fob-ignition {
+  grid-column: span 2;
+  background: hsla(0, 0%, 5%, 80%);
+  border: 1px solid #333;
+}
+
+.btn-fob-key.btn-fob-ignition.engine-ignited-glow {
+  border-color: hsl(var(--accent));
+  color: hsl(var(--accent));
+  background: hsla(var(--accent) / 8%);
+  box-shadow: 0 0 15px hsla(var(--accent) / 10%);
+}
+
+/* Diagnostic log terminal widget */
+.diagnostic-logs-terminal-widget {
+  padding: 1rem;
+  border-radius: 12px;
+}
+
+.terminal-header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  border-bottom: 1px solid hsla(var(--glass-border));
+  padding-bottom: 0.5rem;
+}
+
+.terminal-scroller {
+  height: 120px;
+  overflow-y: auto;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 0.3rem;
+  padding: 0.4rem;
+  background: rgba(0,0,0,0.5);
+  border-radius: 6px;
+  border: 1px solid hsla(var(--glass-border));
+}
+
+.terminal-row {
+  opacity: 0.85;
+}
+
+/* Telemetry Gauges */
+.telemetry-gauges-ledger-wrap {
+  padding: 1.2rem;
+  border-radius: 12px;
+}
+
+.hud-gauges-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  border-bottom: 1px solid hsla(var(--glass-border));
+  padding-bottom: 1rem;
+}
+
+.hud-gauge-card {
+  background: hsla(var(--bg-secondary) / 20%);
+  border: 1px solid hsla(var(--glass-border));
+  padding: 1rem;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.gauge-large-value {
+  margin: 0.4rem 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+}
+
+.gauge-large-value .value-num {
+  font-size: 2.2rem;
+  font-weight: 700;
+  font-family: var(--font-display);
+  color: #fff;
+  line-height: 1;
+}
+
+.gauge-large-value .value-unit {
+  font-size: 0.8rem;
+  color: hsl(var(--text-muted));
+  margin-left: 0.2rem;
+  font-weight: 600;
+}
+
+.speed-intensity-bar, .fuel-intensity-bar {
+  width: 100%;
+  height: 4px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 0.3rem;
+}
+
+.speed-intensity-bar .speed-fill, .fuel-intensity-bar .fuel-fill {
+  height: 100%;
+  transition: width 0.5s ease-out;
+}
+
+.speed-intensity-bar .speed-fill {
+  background: hsl(var(--accent));
+}
+
+.fuel-intensity-bar .fuel-fill.bg-cyan {
+  background: #3acbe8;
+}
+
+.fuel-intensity-bar .fuel-fill.bg-green {
+  background: #4caf50;
+}
+
+.diagnostics-sub-ledger {
+  display: flex;
+  flex-direction: column;
+}
+
+.diag-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.tire-pressures-mini-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.5rem;
+}
+
+.tire-card {
+  padding: 0.5rem;
+  border: 1px dashed hsla(var(--glass-border));
+  background: rgba(0,0,0,0.2);
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Map Widget */
+.customer-telemetry-map-widget {
+  padding: 0.8rem;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.map-header-bar {
+  display: flex;
+  align-items: center;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid hsla(var(--glass-border));
+  margin-bottom: 0.5rem;
+}
+
+.customer-mini-map-box {
+  height: 250px;
+  width: 100%;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* Custom Leaflet Dark Marker styling */
+.custom-gps-marker {
+  position: relative;
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.gps-arrow-icon {
+  font-size: 14px;
+  color: #3acbe8;
+  text-shadow: 0 0 8px #3acbe8;
+  z-index: 10;
+  transition: transform 0.8s ease-out;
+}
+
+.gps-pulse-cyan {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(58, 203, 232, 0.2);
+  border: 2px solid #3acbe8;
+  animation: gpsPulse 2s infinite ease-out;
+  pointer-events: none;
+}
+
+@keyframes gpsPulse {
+  0% { transform: scale(0.6); opacity: 1; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+
+/* Inactive booking instructions state */
+.customer-inactive-instructions-card {
+  padding: 3rem 2rem;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  max-width: 600px;
+  margin: 2rem auto;
+  border: 1px solid hsla(var(--glass-border));
+  background: hsla(var(--bg-secondary) / 20%);
+}
+
+.instruct-icon-avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: hsla(var(--accent-glow));
+  color: hsl(var(--accent));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1.2rem;
+  box-shadow: 0 0 25px hsla(var(--accent) / 15%);
+}
+
+.instruction-check-steps {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+  text-align: left;
+}
+
+.instruct-step {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  padding: 1rem;
+  background: rgba(0,0,0,0.2);
+  border: 1px solid hsla(var(--glass-border));
+  border-radius: 8px;
+}
+
+.instruct-step .step-num {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: hsl(var(--accent));
+  background: hsla(var(--accent) / 10%);
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* Extensions styles */
+.extension-modal-container {
+  max-width: 500px !important;
+}
+
+.extension-modal-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.saved-card-badge-row {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 0.8rem;
+  border-radius: 8px;
+  background: hsla(var(--accent) / 3%);
+  border: 1px solid hsla(var(--accent) / 10%);
+}
+
+.extension-pricing-ledger {
+  padding: 1rem;
+  border-radius: 8px;
+  background: rgba(0,0,0,0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.extension-modal-actions {
+  display: grid;
+  grid-template-columns: 1fr 1.5fr;
+  gap: 0.8rem;
+}
+
+.extension-success-screen {
+  padding: 2rem 1rem;
+}
+
+/* Responsiveness media queries */
+@media (max-width: 1100px) {
+  .garage-active-console-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .customer-garage-split {
+    grid-template-columns: 1fr !important;
+    height: auto !important;
+  }
+  .customer-garage-sidebar {
+    border-right: none;
+    border-bottom: 1px solid hsla(var(--glass-border));
+    height: 200px;
+  }
+  .garage-overview-billboard {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+}
+

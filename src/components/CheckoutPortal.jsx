@@ -188,6 +188,8 @@ function CheckoutPortalInner({ car, user, isOpen, onClose, onBookingSuccess }) {
             userId: user ? user.uid : 'anonymous',
             userEmail: user ? user.email : 'anonymous',
             status: 'Pending', // New bookings start as Pending for admin review
+            cardBrand: 'Visa',
+            cardLast4: '4242',
             stripePaymentIntentId: result.paymentIntent.id,
             createdAt: new Date().toISOString()
           };
@@ -212,6 +214,10 @@ function CheckoutPortalInner({ car, user, isOpen, onClose, onBookingSuccess }) {
       // Legacy Mock Simulation Mode
       setTimeout(async () => {
         const referenceNumber = 'LC-' + Math.floor(100000 + Math.random() * 900000);
+        const rawCard = paymentData.cardNumber.replace(/\s+/g, '');
+        const cardLast4 = rawCard.length >= 4 ? rawCard.slice(-4) : '4242';
+        const cardBrand = rawCard.startsWith('5') ? 'Mastercard' : rawCard.startsWith('3') ? 'Amex' : 'Visa';
+
         const details = {
           referenceNumber,
           carId: car.id,
@@ -230,6 +236,8 @@ function CheckoutPortalInner({ car, user, isOpen, onClose, onBookingSuccess }) {
           userId: user ? user.uid : 'anonymous',
           userEmail: user ? user.email : 'anonymous',
           status: 'Pending',
+          cardBrand,
+          cardLast4,
           createdAt: new Date().toISOString()
         };
         

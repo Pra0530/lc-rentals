@@ -10,6 +10,7 @@ import Footer from './components/Footer';
 import AuthModal from './components/AuthModal';
 import CheckoutPortal from './components/CheckoutPortal';
 import AdminPanel from './components/AdminPanel';
+import GaragePortal from './components/GaragePortal';
 
 // Firebase Integrations
 import { auth, db, onAuthStateChanged, signOut, collection, doc, onSnapshot, setDoc } from './firebase';
@@ -33,6 +34,7 @@ export default function App() {
 
   // Admin View state
   const [isAdminOpen, setIsAdminOpen] = useState(false);
+  const [isGarageOpen, setIsGarageOpen] = useState(false);
 
   // Live Fleet state loaded from Cloud Firestore
   const [fleet, setFleet] = useState([]);
@@ -164,6 +166,19 @@ export default function App() {
     );
   }
 
+  // Switch to full-screen Customer Garage Portal if open
+  if (isGarageOpen) {
+    return (
+      <div className="app-shell-theme">
+        <GaragePortal 
+          user={activeUser}
+          fleet={fleet}
+          onClose={() => setIsGarageOpen(false)}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="app-shell-theme">
       <Navbar 
@@ -171,6 +186,7 @@ export default function App() {
         onAuthTrigger={() => setIsAuthOpen(true)}
         onLogout={handleLogout}
         onAdminTrigger={() => setIsAdminOpen(true)}
+        onGarageTrigger={() => setIsGarageOpen(true)}
       />
       
       <Hero onSearch={handleSearchFilter} />
