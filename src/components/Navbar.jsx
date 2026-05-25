@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Menu, X, User, LogOut, FileText, ShieldAlert, Car } from 'lucide-react';
+import { Menu, X, User, LogOut, FileText, ShieldAlert, Car, Bell } from 'lucide-react';
+import { requestNotificationPermission } from '../services/pushNotificationService';
 
 export default function Navbar({ user, onAuthTrigger, onLogout, onAdminTrigger, onGarageTrigger }) {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
+  const [notificationPermission, setNotificationPermission] = useState(
+    typeof window !== 'undefined' && 'Notification' in window ? Notification.permission : 'unsupported'
+  );
 
   useEffect(() => {
     const handleScroll = () => {
@@ -78,6 +82,17 @@ export default function Navbar({ user, onAuthTrigger, onLogout, onAdminTrigger, 
 
                   <button 
                     className="dropdown-item" 
+                    onClick={async () => {
+                      const perm = await requestNotificationPermission();
+                      setNotificationPermission(perm);
+                    }}
+                  >
+                    <Bell size={14} className={notificationPermission === 'granted' ? "text-cyan" : "text-muted"} />
+                    {notificationPermission === 'granted' ? "Notifications Enabled" : "Enable Alerts"}
+                  </button>
+
+                  <button 
+                    className="dropdown-item" 
                     onClick={() => {
                       setShowProfileDropdown(false);
                       scrollToSection('booking-form');
@@ -136,6 +151,16 @@ export default function Navbar({ user, onAuthTrigger, onLogout, onAdminTrigger, 
               <li className="mobile-user-profile-label">Logged in as {user.name}</li>
               <li onClick={() => { setIsMobileMenuOpen(false); onGarageTrigger(); }}>
                 <span className="flex-align-icon text-cyan"><Car size={18} /> My Garage</span>
+              </li>
+              <li onClick={async () => {
+                setIsMobileMenuOpen(false);
+                const perm = await requestNotificationPermission();
+                setNotificationPermission(perm);
+              }}>
+                <span className="flex-align-icon">
+                  <Bell size={18} className={notificationPermission === 'granted' ? "text-cyan" : "text-muted"} />
+                  {notificationPermission === 'granted' ? "Notifications Enabled" : "Enable Alerts"}
+                </span>
               </li>
               <li onClick={() => { setIsMobileMenuOpen(false); onAdminTrigger(); }}>
                 <span className="flex-align-icon text-gold"><ShieldAlert size={18} /> Admin Console</span>

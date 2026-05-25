@@ -14,6 +14,7 @@ import GaragePortal from './components/GaragePortal';
 
 // Firebase Integrations
 import { auth, db, onAuthStateChanged, signOut, collection, doc, onSnapshot, setDoc } from './firebase';
+import { initializeFCM, sendNativeNotification } from './services/pushNotificationService';
 
 export default function App() {
   const [activeFilter, setActiveFilter] = useState('All');
@@ -69,6 +70,8 @@ export default function App() {
           email: user.email,
           phone: user.phoneNumber || ''
         });
+        // Request token and initialize FCM (non-blocking)
+        initializeFCM(user.uid);
       } else {
         setActiveUser(null);
       }
@@ -92,6 +95,46 @@ export default function App() {
       unsubscribeFleet();
     };
   }, []);
+
+  // Live listener to booking status transitions for browser push notifications
+  useEffect(() => {
+    if (!activeUser) return;
+    
+    // Store previous statuses in a ref to check for transitions
+    const prevStatuses = {};
+
+    const unsubscribe = onSnapshot(collection(db, "bookings"), (snapshot) => {
+      snapshot.docs.forEach((doc) => {
+        const booking = doc.data();
+        if (booking.userId === activeUser.uid) {
+          const bookingId = doc.id;
+          const currentStatus = booking.status;
+          const oldStatus = prevStatuses[bookingId];
+
+          if (oldStatus && oldStatus !== currentStatus) {
+            // Status changed! Trigger native push notification
+            let title = "Booking Status Update";
+            let body = `Your booking for ${booking.carName} is now ${currentStatus}.`;
+            if (currentStatus === 'Confirmed') {
+              title = "Booking Confirmed! 🎉";
+              body = `Your luxury experience with the ${booking.carName} has been approved.`;
+            } else if (currentStatus === 'Active') {
+              title = "Rental Active! 🏎️";
+              body = `Enjoy your drive in the ${booking.carName}. Telematics are live.`;
+            } else if (currentStatus === 'Completed') {
+              title = "Rental Completed";
+              body = `Thank you for choosing LC Rentals. Return complete.`;
+            }
+
+            sendNativeNotification(title, body);
+          }
+          prevStatuses[bookingId] = currentStatus;
+        }
+      });
+    });
+
+    return () => unsubscribe();
+  }, [activeUser]);
 
   const handleSearchFilter = (filterType) => {
     setActiveFilter(filterType);

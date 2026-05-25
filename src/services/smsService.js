@@ -24,10 +24,6 @@ const saveToLocalSMSQueue = (smsLog) => {
 };
 
 export const sendSMS = async (to, body) => {
-  const sid = import.meta.env.VITE_TWILIO_ACCOUNT_SID;
-  const token = import.meta.env.VITE_TWILIO_AUTH_TOKEN;
-  const from = import.meta.env.VITE_TWILIO_PHONE_NUMBER;
-
   const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   const smsLog = {
     id: 'SMS-' + Math.floor(1000 + Math.random() * 9000),
@@ -37,40 +33,27 @@ export const sendSMS = async (to, body) => {
     status: 'Sent'
   };
 
-  // 1. Direct Twilio Integration (if keys are supplied)
-  if (sid && token && from) {
-    try {
-      const basicAuth = btoa(`${sid}:${token}`);
-      const response = await fetch(
-        `https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Basic ${basicAuth}`,
-            'Content-Type': 'application/x-www-form-urlencoded'
-          },
-          body: new URLSearchParams({
-            To: to,
-            From: from,
-            Body: body
-          })
-        }
-      );
-      
-      if (!response.ok) {
-        throw new Error(`Twilio returned error status: ${response.status}`);
-      }
-      
-      console.log(`[Twilio] SMS successfully sent to ${to}`);
-      smsLog.gateway = 'Twilio';
-    } catch (err) {
-      console.warn(`[Twilio CORS/Auth Bypass] Direct browser-to-Twilio call failed: ${err.message}. Defaulting to simulator.`);
-      smsLog.status = 'Simulated (Twilio API Error)';
+  try {
+    const response = await fetch('/api/send-sms', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ to, body })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Serverless endpoint returned HTTP status: ${response.status}`);
     }
-  } else {
-    // 2. Mock Fallback Log
-    console.log(`[Mock SMS Log] Sent to: ${to} | Body: "${body}"`);
-    smsLog.gateway = 'Simulator';
+
+    const data = await response.json();
+    smsLog.gateway = data.status === 'Sent' ? 'Twilio Serverless' : 'Simulator Serverless';
+    smsLog.status = data.status;
+    console.log(`[SMS Service] Serverless dispatch: ${data.status} | ${data.message}`);
+  } catch (err) {
+    console.warn(`[SMS Service Fallback] Serverless endpoint failed: ${err.message}. Defaulting to browser simulation.`);
+    smsLog.gateway = 'Browser Simulator';
+    smsLog.status = 'Simulated';
   }
 
   // Queue the log locally for the Admin/Client toast renders
