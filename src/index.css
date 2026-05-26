@@ -3683,3 +3683,125 @@ dialog[open]::backdrop {
   }
 }
 
+/* ========================================== */
+/* 🛰️ Phase 13: Live Operations CSS overrides */
+/* ========================================== */
+
+.operations-view {
+  height: calc(100vh - 4rem) !important;
+}
+
+.sub-tab-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.bg-cyan-alpha {
+  background: rgba(58, 203, 232, 0.12) !important;
+  color: #3acbe8 !important;
+  border-color: rgba(58, 203, 232, 0.3) !important;
+}
+
+.bg-blue {
+  background-color: #2196f3 !important;
+}
+
+.bg-yellow {
+  background-color: #ffeb3b !important;
+}
+
+.bg-green {
+  background-color: #4caf50 !important;
+}
+
+/* Pulsing parked car indicators */
+.parked-car-wrapper {
+  position: relative;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.parked-pulse-ring {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.parked-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  z-index: 2;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.5);
+}
+
+@keyframes pulse-parked {
+  0% {
+    transform: scale(0.8);
+    opacity: 0.85;
+  }
+  100% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+}
+
+/* Marker blink/hazard animations */
+@keyframes blink-hazard {
+  0%, 100% {
+    filter: drop-shadow(0 0 6px #ff9800);
+  }
+  50% {
+    filter: drop-shadow(0 0 1px #ff9800);
+  }
+}
+
+@keyframes pulse-horn {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.telemetry-expanded-console {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow-y: auto;
+  border-top: none;
+  background: hsla(var(--bg-secondary) / 40%);
+}
+
+.telemetry-row-card {
+  position: relative;
+  transition: all 0.2s ease-in-out;
+}
+
+.telemetry-row-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+/* Responsive operations view layout */
+@media (max-width: 1200px) {
+  .gps-widget-split {
+    grid-template-columns: 1fr !important;
+    grid-template-rows: auto auto !important;
+    height: auto !important;
+  }
+  .telemetry-hud-sidebar {
+    height: 480px !important;
+  }
+}
+

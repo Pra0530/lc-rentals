@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ShieldCheck, ArrowLeft, CreditCard, Sparkles, Download, CheckCircle2 } from 'lucide-react';
 import { db, collection, addDoc } from '../firebase';
 import { jsPDF } from 'jspdf';
+import { syncToGoogleSheets } from '../utils/googleSheetsSync';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardNumberElement, CardExpiryElement, CardCvcElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { calculateDynamicPrice } from '../utils/pricingCalculator';
@@ -214,6 +215,11 @@ function CheckoutPortalInner({ car, user, isOpen, onClose, onBookingSuccess, fle
           setIsProcessing(false);
           setIsDone(true);
           
+          // Sync with Google Sheets webhook
+          if (pricingSettings?.googleSheetsWebhookUrl) {
+            syncToGoogleSheets(pricingSettings.googleSheetsWebhookUrl, 'booking', details);
+          }
+
           if (onBookingSuccess) {
             onBookingSuccess(details);
           }
@@ -262,6 +268,11 @@ function CheckoutPortalInner({ car, user, isOpen, onClose, onBookingSuccess, fle
           setIsProcessing(false);
           setIsDone(true);
           
+          // Sync with Google Sheets webhook
+          if (pricingSettings?.googleSheetsWebhookUrl) {
+            syncToGoogleSheets(pricingSettings.googleSheetsWebhookUrl, 'booking', details);
+          }
+
           if (onBookingSuccess) {
             onBookingSuccess(details);
           }

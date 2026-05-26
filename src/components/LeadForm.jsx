@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Send, Check } from 'lucide-react';
 import { FLEET_DATA } from './FleetGrid';
 import { db, collection, addDoc } from '../firebase';
+import { syncToGoogleSheets } from '../utils/googleSheetsSync';
 
-export default function LeadForm({ selectedCar, setSelectedCar }) {
+export default function LeadForm({ selectedCar, setSelectedCar, pricingSettings = {} }) {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -93,6 +94,11 @@ export default function LeadForm({ selectedCar, setSelectedCar }) {
       await addDoc(collection(db, "inquiries"), details);
       setInquiryDetails(details);
       setIsSubmitted(true);
+
+      // Sync with Google Sheets webhook
+      if (pricingSettings?.googleSheetsWebhookUrl) {
+        syncToGoogleSheets(pricingSettings.googleSheetsWebhookUrl, 'inquiry', details);
+      }
     } catch (err) {
       console.error("Error submitting inquiry to Firestore:", err);
       alert("Failed to submit your inquiry. Please try again.");

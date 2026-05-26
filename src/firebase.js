@@ -53,12 +53,23 @@ export const googleProvider = isFirebaseConfigured ? rawGoogleProvider : { mock:
    🔑 Mock Event-Bus Listener and Local Storage Adapters for Offline Mode
    ========================================================================== */
 
-const listeners = {};
+const listeners = {}; // path -> array of { isDoc, docId, callback }
 
 const triggerListeners = (path) => {
   if (listeners[path]) {
     const data = getMockStorageData(path);
-    listeners[path].forEach((callback) => callback(createMockSnapshot(data)));
+    listeners[path].forEach(({ isDoc, docId, callback }) => {
+      if (isDoc) {
+        const docData = data.find(item => item.id === docId || item.docId === docId);
+        callback({
+          exists: () => !!docData,
+          data: () => docData ? { ...docData } : null,
+          id: docId
+        });
+      } else {
+        callback(createMockSnapshot(data));
+      }
+    });
   }
 };
 
@@ -76,6 +87,9 @@ const getMockStorageData = (path) => {
   }
   if (path === "inquiries") {
     return JSON.parse(localStorage.getItem("lc_inquiries_db") || "[]");
+  }
+  if (path === "settings") {
+    return JSON.parse(localStorage.getItem("lc_settings_db") || "[]");
   }
   return [];
 };
@@ -119,7 +133,22 @@ export const signOut = isFirebaseConfigured
 export const signInWithEmailAndPassword = isFirebaseConfigured
   ? realAuth.signInWithEmailAndPassword
   : (authInstance, email, password) => {
-      const users = JSON.parse(localStorage.getItem("lc_users_db") || "[]");
+      let users = JSON.parse(localStorage.getItem("lc_users_db") || "[]");
+      if (users.length === 0) {
+        users = [
+          {
+            uid: "usr-admin",
+            email: "harrison@luxury.com",
+            password: "adminpassword",
+            name: "Harrison Ford",
+            phone: "+61 400 123 456",
+            role: "admin",
+            createdAt: new Date().toISOString()
+          }
+        ];
+        localStorage.setItem("lc_users_db", JSON.stringify(users));
+      }
+
       const user = users.find((u) => u.email === email && u.password === password);
       if (!user) {
         return Promise.reject(new Error("auth/user-not-found: Invalid email or password."));
@@ -140,7 +169,21 @@ export const signInWithEmailAndPassword = isFirebaseConfigured
 export const createUserWithEmailAndPassword = isFirebaseConfigured
   ? realAuth.createUserWithEmailAndPassword
   : (authInstance, email, password) => {
-      const users = JSON.parse(localStorage.getItem("lc_users_db") || "[]");
+      let users = JSON.parse(localStorage.getItem("lc_users_db") || "[]");
+      if (users.length === 0) {
+        users = [
+          {
+            uid: "usr-admin",
+            email: "harrison@luxury.com",
+            password: "adminpassword",
+            name: "Harrison Ford",
+            phone: "+61 400 123 456",
+            role: "admin",
+            createdAt: new Date().toISOString()
+          }
+        ];
+      }
+
       if (users.find((u) => u.email === email)) {
         return Promise.reject(new Error("auth/email-already-in-use: Email already registered."));
       }
@@ -220,17 +263,29 @@ export const doc = isFirebaseConfigured
 export const onSnapshot = isFirebaseConfigured
   ? realFirestore.onSnapshot
   : (ref, callback) => {
+      const isDoc = !!ref.id;
+      const docId = ref.id;
       const path = ref.path || ref.collectionPath;
       if (!listeners[path]) {
         listeners[path] = [];
       }
-      listeners[path].push(callback);
+      const listenerObj = { isDoc, docId, callback };
+      listeners[path].push(listenerObj);
 
       const initialData = getMockStorageData(path);
-      setTimeout(() => callback(createMockSnapshot(initialData)), 0);
+      if (isDoc) {
+        const docData = initialData.find(item => item.id === docId || item.docId === docId);
+        setTimeout(() => callback({
+          exists: () => !!docData,
+          data: () => docData ? { ...docData } : null,
+          id: docId
+        }), 0);
+      } else {
+        setTimeout(() => callback(createMockSnapshot(initialData)), 0);
+      }
 
       return () => {
-        listeners[path] = listeners[path].filter((cb) => cb !== callback);
+        listeners[path] = listeners[path].filter((obj) => obj !== listenerObj);
       };
     };
 

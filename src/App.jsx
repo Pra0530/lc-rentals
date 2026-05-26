@@ -43,6 +43,9 @@ export default function App() {
   // Lifted bookings list
   const [bookings, setBookings] = useState([]);
 
+  // Lifted inquiries list
+  const [inquiries, setInquiries] = useState([]);
+
   // Pricing rules settings
   const [pricingSettings, setPricingSettings] = useState({
     dynamicPricingEnabled: true,
@@ -75,6 +78,28 @@ export default function App() {
     return () => {
       window.removeEventListener("lc_sms_received", handleSmsEvent);
     };
+  }, []);
+
+  // Hash-based URL Routing listener
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash;
+      const search = window.location.search;
+      if (hash === '#admin' || search.includes('admin=true')) {
+        setIsAdminOpen(true);
+        setIsGarageOpen(false);
+      } else if (hash === '#garage') {
+        setIsGarageOpen(true);
+        setIsAdminOpen(false);
+      } else if (hash === '#home' || hash === '') {
+        setIsAdminOpen(false);
+        setIsGarageOpen(false);
+      }
+    };
+
+    handleHashChange();
+    window.addEventListener("hashchange", handleHashChange);
+    return () => window.removeEventListener("hashchange", handleHashChange);
   }, []);
 
   // Initialize fleet, user session, bookings, and pricing settings on mount
@@ -136,11 +161,18 @@ export default function App() {
       }
     });
 
+    // 5. Initialise inquiries real-time sync
+    const unsubscribeInquiries = onSnapshot(collection(db, "inquiries"), (snapshot) => {
+      const list = snapshot.docs.map(d => ({ docId: d.id, id: d.id, ...d.data() }));
+      setInquiries(list);
+    });
+
     return () => {
       unsubscribeAuth();
       unsubscribeFleet();
       unsubscribeBookings();
       unsubscribePricing();
+      unsubscribeInquiries();
     };
   }, []);
 
@@ -246,8 +278,12 @@ export default function App() {
           fleet={fleet} 
           setFleet={setFleet} 
           bookings={bookings}
+          inquiries={inquiries}
           pricingSettings={pricingSettings}
-          onClose={() => setIsAdminOpen(false)} 
+          onClose={() => {
+            setIsAdminOpen(false);
+            window.location.hash = '#home';
+          }} 
         />
       </div>
     );
@@ -261,7 +297,10 @@ export default function App() {
           user={activeUser}
           fleet={fleet}
           pricingSettings={pricingSettings}
-          onClose={() => setIsGarageOpen(false)}
+          onClose={() => {
+            setIsGarageOpen(false);
+            window.location.hash = '#home';
+          }}
         />
       </div>
     );
@@ -273,8 +312,14 @@ export default function App() {
         user={activeUser}
         onAuthTrigger={() => setIsAuthOpen(true)}
         onLogout={handleLogout}
-        onAdminTrigger={() => setIsAdminOpen(true)}
-        onGarageTrigger={() => setIsGarageOpen(true)}
+        onAdminTrigger={() => {
+          setIsAdminOpen(true);
+          window.location.hash = '#admin';
+        }}
+        onGarageTrigger={() => {
+          setIsGarageOpen(true);
+          window.location.hash = '#garage';
+        }}
       />
       
       <Hero onSearch={handleSearchFilter} />
@@ -293,6 +338,7 @@ export default function App() {
       <LeadForm 
         selectedCar={selectedCarForInquiry}
         setSelectedCar={setSelectedCarForInquiry}
+        pricingSettings={pricingSettings}
       />
       
       <FAQ />
