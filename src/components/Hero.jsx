@@ -2,8 +2,16 @@ import React, { useState, useEffect, useRef } from 'react';
 import { MapPin, Calendar, Car } from 'lucide-react';
 
 export default function Hero({ onSearch }) {
+  const getTodayString = () => {
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  };
+
   const [location, setLocation] = useState('Sydney Airport');
-  const [dates, setDates] = useState('');
+  const [dates, setDates] = useState(getTodayString());
   const [vehicleType, setVehicleType] = useState('All');
 
   const mapRef = useRef(null);
@@ -255,11 +263,9 @@ export default function Hero({ onSearch }) {
               <span className="form-label">Rental Dates</span>
             </div>
             <input 
-              type="text" 
-              placeholder="Select dates" 
+              type="date" 
+              min={getTodayString()}
               className="form-input widget-input" 
-              onFocus={(e) => e.target.type = 'date'}
-              onBlur={(e) => { if (!e.target.value) e.target.type = 'text'; }}
               value={dates}
               onChange={(e) => setDates(e.target.value)}
             />

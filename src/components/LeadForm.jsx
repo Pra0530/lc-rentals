@@ -5,12 +5,29 @@ import { db, collection, addDoc } from '../firebase';
 import { syncToGoogleSheets } from '../utils/googleSheetsSync';
 
 export default function LeadForm({ selectedCar, setSelectedCar, pricingSettings = {} }) {
+  const getTodayString = () => {
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  };
+
+  const getTomorrowString = () => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const yyyy = tomorrow.getFullYear();
+    const mm = String(tomorrow.getMonth() + 1).padStart(2, '0');
+    const dd = String(tomorrow.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  };
+
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     phone: '',
-    startDate: '',
-    endDate: '',
+    startDate: getTodayString(),
+    endDate: getTomorrowString(),
     carId: 'All',
     message: ''
   });
@@ -214,6 +231,7 @@ export default function LeadForm({ selectedCar, setSelectedCar, pricingSettings 
                       id="startDate" 
                       name="startDate"
                       required
+                      min={getTodayString()}
                       className="form-input"
                       value={formData.startDate}
                       onChange={handleInputChange}
@@ -226,6 +244,7 @@ export default function LeadForm({ selectedCar, setSelectedCar, pricingSettings 
                       id="endDate" 
                       name="endDate"
                       required
+                      min={formData.startDate || getTodayString()}
                       className="form-input"
                       value={formData.endDate}
                       onChange={handleInputChange}

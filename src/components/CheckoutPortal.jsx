@@ -36,21 +36,29 @@ const stripeElementOptions = {
 };
 
 function CheckoutPortalInner({ car, user, isOpen, onClose, onBookingSuccess, fleet = [], bookings = [], pricingSettings = {} }) {
+  const getTodayString = () => {
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  };
+
+  const getTomorrowString = () => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const yyyy = tomorrow.getFullYear();
+    const mm = String(tomorrow.getMonth() + 1).padStart(2, '0');
+    const dd = String(tomorrow.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  };
+
   const [useInsurance, setUseInsurance] = useState(true);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [signature, setSignature] = useState('');
   
-  const [startDate, setStartDate] = useState(() => {
-    const today = new Date();
-    today.setDate(today.getDate() + 1);
-    return today.toISOString().split('T')[0];
-  });
-  
-  const [endDate, setEndDate] = useState(() => {
-    const today = new Date();
-    today.setDate(today.getDate() + 4);
-    return today.toISOString().split('T')[0];
-  });
+  const [startDate, setStartDate] = useState(getTodayString());
+  const [endDate, setEndDate] = useState(getTomorrowString());
 
   const [paymentData, setPaymentData] = useState({
     cardNumber: '',
@@ -434,6 +442,7 @@ function CheckoutPortalInner({ car, user, isOpen, onClose, onBookingSuccess, fle
                       type="date" 
                       value={startDate} 
                       onChange={(e) => setStartDate(e.target.value)}
+                      min={getTodayString()}
                       className="form-input widget-date-input"
                     />
                   </div>
@@ -443,6 +452,7 @@ function CheckoutPortalInner({ car, user, isOpen, onClose, onBookingSuccess, fle
                       type="date" 
                       value={endDate} 
                       onChange={(e) => setEndDate(e.target.value)}
+                      min={startDate || getTodayString()}
                       className="form-input widget-date-input"
                     />
                   </div>
