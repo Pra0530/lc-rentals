@@ -373,6 +373,12 @@ dialog[open]::backdrop {
   color: hsl(var(--accent));
 }
 
+.navbar-cta {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
 .navbar-toggle {
   display: none;
   cursor: pointer;
